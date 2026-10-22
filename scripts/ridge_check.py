@@ -6,8 +6,10 @@ multiplying the stationarity condition by J and using J theta = 2 f gives
 so in each NTK eigendirection j:  sigma_j / y_j = -c / (Lambda_j + c).
 Weakly represented directions (small Lambda_j) keep a larger share of their target as error.
 
-We train the Fig. 7 grokking and memorization cells for 24,000 updates, then compare the
-measured residual with this prediction using the network's own empirical NTK.
+We train the Fig. 7 grokking and memorization cells and compare the measured residual with
+this prediction, using the network's own empirical NTK, after 24k, 100k and 300k updates.
+(An earlier version tried to reach stationarity with L-BFGS; it stalled at ReLU kinks with
+|grad objective| / |grad data| still ~0.37, so we dropped it.)
 """
 import json
 import sys
@@ -19,7 +21,7 @@ import torch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from grok.data import difference_split  # noqa: E402
 from grok.ntk import full_ntk  # noqa: E402
-from grok.train import train_reference  # noqa: E402
+from grok.model import make_mlp  # noqa: E402
 
 torch.set_num_threads(1)
 CELLS = {"grokking": (2.36316, 1.18329e-4), "memorization": (0.87048, 3.2930e-5)}
@@ -56,31 +58,26 @@ def analyze(W1, W2, wd, tag):
                 n_directions_compared=int(keep.sum()))
 
 
-def settle(W1, W2, wd, iters=3000):
-    """Polish to a nearby stationary point of mean((f-y)^2) + wd/2 |theta|^2 with L-BFGS in float64."""
-    W1 = W1.contiguous().clone().requires_grad_()
-    W2 = W2.contiguous().clone().requires_grad_()
-    X, Yt = Xtr.double(), Y.view(n, p)
-    opt = torch.optim.LBFGS([W1, W2], lr=1, max_iter=iters, tolerance_grad=1e-14,
-                            tolerance_change=1e-16, history_size=50, line_search_fn="strong_wolfe")
-
-    def closure():
-        opt.zero_grad()
-        obj = ((torch.relu(X @ W1) @ W2 - Yt) ** 2).mean() + 0.5 * wd * (W1.pow(2).sum() + W2.pow(2).sum())
-        obj.backward()
-        return obj
-    opt.step(closure)
-    return W1.detach(), W2.detach()
+CHECKS = (24_000, 100_000, 300_000)
 
 
 summary = {}
 for name, (lr, wd) in CELLS.items():
-    _, _, model = train_reference(d, lr, wd, 24_000)
-    W1 = model[0].weight.detach().T.double()
-    W2 = model[2].weight.detach().T.double()
-    summary[name] = dict(lr=lr, wd=wd, after_24k_sgd=analyze(W1, W2, wd, name))
-    print(name, "after SGD", summary[name]["after_24k_sgd"], flush=True)
-    W1s, W2s = settle(W1, W2, wd)
-    summary[name]["after_settling"] = analyze(W1s, W2s, wd, f"{name}_settled")
-    print(name, "settled", summary[name]["after_settling"], flush=True)
+    # Keep training with the same SGD; the theory says the net approaches stationarity
+    # on the slow clock 1/(lr*wd), so the ridge relation should tighten over time.
+    model = make_mlp(2 * p, 256, p, seed=0)
+    opt = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=wd, momentum=0)
+    Yt = torch.nn.functional.one_hot(ytr, p).float()
+    summary[name] = dict(lr=lr, wd=wd, slow_clock_updates=1 / (lr * wd))
+    done = 0
+    for target in CHECKS:
+        for _ in range(target - done):
+            opt.zero_grad()
+            torch.nn.functional.mse_loss(model(Xtr), Yt).backward()
+            opt.step()
+        done = target
+        W1 = model[0].weight.detach().T.double()
+        W2 = model[2].weight.detach().T.double()
+        summary[name][f"after_{target}"] = analyze(W1, W2, wd, f"{name}_{target}")
+        print(name, target, summary[name][f"after_{target}"], flush=True)
 (out / "summary.json").write_text(json.dumps(summary, indent=2))

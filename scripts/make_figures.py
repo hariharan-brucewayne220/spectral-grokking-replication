@@ -239,7 +239,7 @@ def ridge_figure():
         return
     summary = json.loads(path.read_text())
     metrics["ridge"] = summary
-    states = [("after_24k_sgd", "", "after 24,000 SGD updates"), ("after_settling", "_settled", "settled to a stationary point")]
+    states = [("after_24000", "_24000", "after 24,000 updates"), ("after_300000", "_300000", "after 300,000 updates")]
     fig, axes = plt.subplots(len(summary), 2, figsize=(12, 4.4 * len(summary)), squeeze=False)
     for r, name in enumerate(summary):
         for col, (key, suffix, label) in enumerate(states):

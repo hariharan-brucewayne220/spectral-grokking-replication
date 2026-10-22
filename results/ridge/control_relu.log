@@ -1,0 +1,2 @@
+relu 0 grad ratio 1.02e+00  rel err 9.14e-01  pre-acts near 0: 0.001
+relu 50000 grad ratio 3.45e-01  rel err 1.37e-01  pre-acts near 0: 0.230

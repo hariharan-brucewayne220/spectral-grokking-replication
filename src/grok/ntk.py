@@ -19,11 +19,13 @@ def full_ntk(X, labels_p, W1, W2):
     """Full kernel K[(u, c), (v, d)] as an [n*p, n*p] matrix (row index = u*p + c)."""
     H, M = _features(X, W1)
     n, p = X.shape[0], W2.shape[1]
-    hh = H @ H.T
-    xx = X @ X.T
-    t2 = torch.einsum("uk,vk,kc,kd->ucvd", M, M, W2, W2) * xx[:, None, :, None]
-    t1 = hh[:, None, :, None] * torch.eye(p, dtype=X.dtype)[None, :, None, :]
-    return (t1 + t2).reshape(n * p, n * p)
+    # A[(u, c), k] = m_uk * W2[k, c]; one matmul gives sum_k over all (u, c), (v, d) pairs.
+    # (A 4-operand einsum here materialized an n*n*width*p intermediate, ~6 GB for mod 23.)
+    A = (M[:, None, :] * W2.T[None, :, :]).reshape(n * p, -1)
+    K = (A @ A.T).view(n, p, n, p)
+    K *= (X @ X.T)[:, None, :, None]
+    K += (H @ H.T)[:, None, :, None] * torch.eye(p, dtype=X.dtype)[None, :, None, :]
+    return K.reshape(n * p, n * p)
 
 
 def true_label_ntk(X, y, W1, W2):
