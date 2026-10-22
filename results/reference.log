@@ -1,0 +1,1 @@
+memorization {'lr': 0.87048, 'wd': 3.293e-05, 'paper': 'memorization', 'phase': 'memorization', 'first_test_90': None, 'peak_train': 1.0, 'final_train': 1.0, 'final_test': 0.04968944191932678}

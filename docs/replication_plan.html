@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grokking Replication Plan</title>
+<style>
+:root{--bg:#fbfaf7;--fg:#1d1d1b;--muted:#5e5d58;--card:#ffffff;--line:#e4e1d8;--accent:#1f6f5c;--warn:#9a5b00;--chip:#eef4f1;--code:#f3f1ec}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161615;--fg:#ecebe6;--muted:#a3a19a;--card:#1f1f1d;--line:#34332f;--accent:#6cc4a8;--warn:#e0a54a;--chip:#22302b;--code:#262523}}
+:root[data-theme="dark"]{--bg:#161615;--fg:#ecebe6;--muted:#a3a19a;--card:#1f1f1d;--line:#34332f;--accent:#6cc4a8;--warn:#e0a54a;--chip:#22302b;--code:#262523}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:880px;margin:0 auto;padding:32px 16px 80px}
+h1{font-size:1.9rem;line-height:1.25;margin:0 0 6px}
+h2{font-size:1.25rem;margin:40px 0 10px;padding-top:8px;border-top:1px solid var(--line)}
+h3{font-size:1.02rem;margin:22px 0 6px}
+p,li{color:var(--fg)}
+.sub{color:var(--muted);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:14px 0}
+.hl{border-left:4px solid var(--accent)}
+.warn{border-left:4px solid var(--warn)}
+.chip{display:inline-block;background:var(--chip);color:var(--accent);border-radius:999px;padding:1px 10px;font-size:.82rem;font-weight:600;margin-right:6px}
+code,kbd{background:var(--code);border-radius:4px;padding:1px 5px;font:.88em ui-monospace,SFMono-Regular,Menlo,monospace}
+table{border-collapse:collapse;width:100%;font-size:.92rem;margin:8px 0}
+th,td{border-bottom:1px solid var(--line);padding:7px 8px;text-align:left;vertical-align:top}
+th{color:var(--muted);font-weight:600}
+.tw{overflow-x:auto}
+ul.check{list-style:none;padding-left:0}
+ul.check li{padding:4px 0 4px 30px;position:relative}
+ul.check input{position:absolute;left:4px;top:9px;accent-color:var(--accent)}
+.need li{margin:8px 0}
+.stat{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.stat div{flex:1 1 180px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px}
+.stat b{display:block;font-size:1.35rem;color:var(--accent)}
+.stat span{color:var(--muted);font-size:.85rem}
+a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main>
+<h1>Replicating "A Spectral Theory of Grokking"</h1>
+<p class="sub">Implementation plan, checklists and setup requirements · drafted 22 Oct 2026</p>
+
+<div class="card hl">
+<p><b>Paper:</b> <i>A Spectral Theory of Grokking: Weight Decay induces Feature Learning</i>. Lenz Pracher, Pascal de Jong, Oskar Lieshaus, Alan Jeffares, Steffen Rulands (LMU Munich, Cambridge). arXiv <code>2609.26679</code>, cs.LG, v1 posted 22 Sep 2026.</p>
+<p><b>One-line claim:</b> after a network memorizes its training data, weight decay leaves a small leftover error. That leftover error slowly reshapes the network's features (its neural tangent kernel) until it generalizes. The theory predicts the delay scales as <code>1/(learning rate × weight decay)</code>.</p>
+<p><b>Why this one:</b> the core experiments use a single-hidden-layer MLP on 529 examples, so they fit this 4-CPU, no-GPU machine. The authors have <b>not released code</b> ("will be made publicly available upon publication"), so this is an independent rebuild from the appendix, which makes a stronger project story.</p>
+</div>
+
+<h2>Feasibility already checked</h2>
+<div class="stat">
+<div><b>8,300</b><span>update where my rebuild first hits 90% held-out accuracy. Paper reports 8,300 for the same cell.</span></div>
+<div><b>22.7 s</b><span>one 24,000-step run on 1 CPU thread</span></div>
+<div><b>~1.6 h</b><span>estimated 32×32 grid (1,024 runs) on 4 cores</span></div>
+<div><b>~12 h</b><span>estimated full paper grid (7,560 runs) on 4 cores</span></div>
+</div>
+<p>Environment: Python 3.13, PyTorch 2.14.1 (installed from PyPI), 4 CPUs, 15 GB RAM, no GPU. arxiv.org and download.pytorch.org are blocked by this session's network policy; I read the paper through Firecrawl's copy of the arXiv HTML and saved it as <code>spectral_grokking_2609.26679.md</code>.</p>
+
+<h3>Other recent papers I considered</h3>
+<div class="tw"><table>
+<tr><th>Paper</th><th>Why not first choice</th></tr>
+<tr><td>Misalignment of Low-Loss Regions Causes Grokking (2610.00620)</td><td>Great "anti-grokking" hook, but one run takes ~25 min on an RTX 5090 (150k epochs). Needs a GPU.</td></tr>
+<tr><td>Spectrally Targeted Muon (2610.10965)</td><td>Uses CIFAR-10 and NanoGPT speedruns. GPU work.</td></tr>
+<tr><td>Does Step Law Transfer to Small LMs? (2609.27581)</td><td>935 TinyStories training runs. GPU work.</td></tr>
+<tr><td>Sparse Transformer testbed (2610.19907)</td><td>5-layer TinyStories model plus AutoInterp, which needs an LLM API.</td></tr>
+</table></div>
+
+<h2>What I need from you</h2>
+<div class="card warn">
+<ol class="need">
+<li><b>Approve the paper</b> (or pick another from the table above, which would mean renting a GPU).</li>
+<li><b>A GitHub repo for the results.</b> This container is wiped after inactivity, so results have to be pushed. Create an empty <b>public</b> repo (suggested name <code>spectral-grokking-replication</code>) and send me <code>owner/repo</code>. GitHub needs to be connected in your claude.ai settings with access to that repo. I'll attach it from here.</li>
+<li><b>Pick a compute tier</b> (see below). Default if you don't choose: Tier B.</li>
+<li><b>Your starting level</b>, so the teaching guide fits: comfortable with Python? PyTorch? Have you seen gradients, matrices and eigenvectors before?</li>
+<li><b>LinkedIn details:</b> your name and headline, tone (casual / technical), whether to tag the five authors, and whether to say you built it with Claude Code.</li>
+</ol>
+<p>No API keys, no paid services, and no GPU needed for Tiers A and B.</p>
+</div>
+
+<div class="tw"><table>
+<tr><th>Tier</th><th>Covers</th><th>CPU time (est.)</th></tr>
+<tr><td><b>A · core</b></td><td>4 representative runs (Fig. 7), 24×24 phase grid (Fig. 3a), timing law (Fig. 3b)</td><td>~1 h</td></tr>
+<tr><td><b>B · recommended</b></td><td>Tier A with a 40×40 grid, plus the NTK Fourier diagnostic on mod 97 (Fig. 2) and a numeric check of Theorem 1</td><td>~3 to 4 h</td></tr>
+<tr><td><b>C · full</b></td><td>Tier B plus full 84×90 grid, a coarse Transformer sweep (Fig. 4) and ~8 seed pairs of the NTK intervention (Fig. 6)</td><td>~15 to 20 h, spread over several sessions</td></tr>
+</table></div>
+
+<h2>Checklist 1 · Claims we will test</h2>
+<ul class="check">
+<li><input type="checkbox" checked disabled> <b>C0 sanity:</b> grokking cell (lr 2.36316, wd 1.18329e-4) first reaches 90% held-out at update 8,300. <i>Done in probe: 8,300.</i></li>
+<li><input type="checkbox" disabled> <b>C1 four phases (Fig. 7):</b> memorization at (0.87048, 3.293e-5); forgetting at (1.43426, 1.24846e-3) with peak train acc 0.948 ending at 0.204; no fitting at (28.6967, 1.89561e-4).</li>
+<li><input type="checkbox" disabled> <b>C2 phase map (Fig. 3a):</b> memorize at weak decay, a grokking band, no-fit at high learning rate, failure past wd ≈ 7e-4 to 8.4e-4, instability near lr ≈ 18.9.</li>
+<li><input type="checkbox" disabled> <b>C3 boundary law:</b> memorize/grok boundary follows lr = A / wd, paper fits A ≈ 1.09e-4 over 2e-5 ≤ wd ≤ 2e-4, empirical log-log slope −1.17.</li>
+<li><input type="checkbox" disabled> <b>C4 timing law (Fig. 3b):</b> for grokking runs, the first update at 10% held-out accuracy scales with 1/(lr·wd).</li>
+<li><input type="checkbox" disabled> <b>C5 NTK structure (Fig. 2):</b> mod 97, lr 40, wd 2.5e-5, 20k steps. The 97×97 label-space kernel grows Fourier "standing wave" eigenvectors after training accuracy is already 100%.</li>
+<li><input type="checkbox" disabled> <b>C6 Theorem 1:</b> with a frozen kernel, leftover error in eigendirection j equals −2λ/(Λ<sub>j</sub>+2λ) of the target. Check numerically.</li>
+<li><input type="checkbox" disabled> <b>C7 (Tier C):</b> Transformer shows the same 1/wd boundary (A ≈ 1.69e-5) and median lr·wd·s<sub>80</sub> ≈ 0.92.</li>
+<li><input type="checkbox" disabled> <b>C8 (Tier C):</b> 3,000 steps of NTK alignment early on speeds generalization by ~1.5×.</li>
+</ul>
+
+<h2>Checklist 2 · Exact setup from the paper (Appendix G)</h2>
+<ul class="check">
+<li><input type="checkbox" checked disabled> Task: (a + b) mod 23, all 529 ordered pairs, input = two concatenated 23-dim one-hots (46 dims).</li>
+<li><input type="checkbox" checked disabled> Split by difference: train if (a − b) mod 23 ∈ {0,1,2,3,4,5,6,7,12,13,14,16,17,19,20,22}. Gives 368 train, 161 held-out.</li>
+<li><input type="checkbox" checked disabled> Model: bias-free 46 → 256 → 23 ReLU MLP, He-normal init, seed 0, same init at every grid point.</li>
+<li><input type="checkbox" checked disabled> Training: full-batch SGD, no momentum, PyTorch <code>weight_decay</code> (coupled L2), MSE on logits vs one-hot, 24,000 updates, eval every 100.</li>
+<li><input type="checkbox" disabled> Grid: lr log-spaced 0.1 to 100, wd log-spaced 5e-6 to 2e-3.</li>
+<li><input type="checkbox" disabled> Phase rules (90% threshold): grok = final train and test &gt; 90%; memorize = train &gt; 90%, test below; forget = train crossed 90% then ended below; else no fit.</li>
+<li><input type="checkbox" disabled> Boundary: per wd column, geometric midpoint between last memorizing lr and first grokking lr; fit lr = A/wd.</li>
+<li><input type="checkbox" disabled> NTK diagnostic: mod 97, 4,753 unordered pairs, 50/50 split (seed 0), 194 → 256 → 97 MLP; true-label NTK averaged by label, then diagonal-normalized.</li>
+</ul>
+
+<h2>Checklist 3 · Build steps (I run these in auto mode)</h2>
+<ul class="check">
+<li><input type="checkbox" disabled> Repo layout: <code>src/</code> (data, model, train, sweep, ntk, analysis), <code>tests/</code>, <code>results/</code>, <code>figures/</code>, <code>docs/</code>.</li>
+<li><input type="checkbox" disabled> Resumable sweep runner: 4 worker processes, one JSONL line per run, skip finished cells, commit and push results every ~30 min.</li>
+<li><input type="checkbox" disabled> Analysis: phase classifier, boundary extraction, A/wd fit, slope, timing-law fit with R².</li>
+<li><input type="checkbox" disabled> NTK code: per-sample gradients via <code>torch.func</code>, eigenvector tracking across checkpoints.</li>
+<li><input type="checkbox" disabled> Figures that mirror the paper: Fig. 2, 3a, 3b, 7 equivalents.</li>
+<li><input type="checkbox" disabled> <code>REPORT.html</code>: paper number vs our number for every claim, with pass / partial / fail.</li>
+</ul>
+
+<h2>Checklist 4 · Tests and validation</h2>
+<ul class="check">
+<li><input type="checkbox" disabled> Split has 368/161 examples and is unchanged by shifting (a, b) → (a + r, b + r).</li>
+<li><input type="checkbox" disabled> Model has no biases and 17,664 parameters (46·256 + 256·23).</li>
+<li><input type="checkbox" disabled> 2-homogeneity: f(cθ) = c²·f(θ), and Euler identity Jθ = 2f, to float tolerance. This is the property the whole theory relies on.</li>
+<li><input type="checkbox" disabled> Determinism: same seed gives identical curves.</li>
+<li><input type="checkbox" disabled> Phase classifier unit tests on hand-made curves.</li>
+<li><input type="checkbox" disabled> NTK check: kernel from <code>torch.func</code> matches a slow loop over samples.</li>
+<li><input type="checkbox" disabled> Reference cells reproduce paper numbers (C0, C1).</li>
+</ul>
+
+<h2>Checklist 5 · Deliverables for you</h2>
+<ul class="check">
+<li><input type="checkbox" disabled> Public GitHub repo with README, code, results, figures.</li>
+<li><input type="checkbox" disabled> Validation report (HTML).</li>
+<li><input type="checkbox" disabled> Teaching guide (HTML): grokking, NTK, lazy vs rich learning, weight decay, homogeneity, phase diagrams, how each script works, interview Q&amp;A, and a "what you can say you did" section.</li>
+<li><input type="checkbox" disabled> LinkedIn post draft plus one headline image (phase map or timing-law plot).</li>
+</ul>
+
+<h2>Known risks</h2>
+<ul>
+<li><b>No official code.</b> Small details (exact He-normal variant, eval timing) are my reading of the appendix. The 8,300 match suggests the reading is right, but we will report any cell that disagrees rather than tune it away.</li>
+<li><b>Container resets.</b> Long sweeps can be lost if the session idles. Mitigation: resumable runner plus regular pushes, which is why I need the repo.</li>
+<li><b>Fit constants.</b> The paper's boundary constants come from its 84×90 grid. A coarser grid gives noisier A and slope, so Tier A/B will be judged on shape and order of magnitude, with that stated plainly.</li>
+<li><b>Seed 0 only.</b> The paper sweeps one seed. I'll add a small multi-seed check on a few cells so the post doesn't overclaim.</li>
+</ul>
+</main>
+</body>
+</html>
