@@ -15,11 +15,12 @@ import torch.nn as nn
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from grok.data import unordered_random_split  # noqa: E402
 from grok.model import make_mlp  # noqa: E402
-from grok.ntk import circulant_fraction, fourier_peak, label_kernel, true_label_ntk  # noqa: E402
+from grok.ntk import circulant_fraction, fourier_peak, label_kernel_raw, true_label_ntk  # noqa: E402
 
 torch.set_num_threads(1)
 P, LR, WD, STEPS = 97, 40.0, 2.5e-5, 20_000
-CHECKPOINTS = [0, 100, 500, 1000, 3000, 6000, 8000, 10000, 20000]
+# paper's checkpoints plus extra ones so post-fit trends are resolved
+CHECKPOINTS = sorted({0, 100, 500, 1000, 3000, 6000, 8000, 10000, 20000} | set(range(2000, 20001, 1000)))
 
 d = unordered_random_split(P, seed=0)
 Xtr, ytr, Xte, yte = d.split()
@@ -29,7 +30,7 @@ opt = torch.optim.SGD(model.parameters(), lr=LR, weight_decay=WD, momentum=0)
 
 out = Path("results/ntk97")
 out.mkdir(parents=True, exist_ok=True)
-kernels, log = {}, []
+kernels, raw_kernels, log = {}, {}, []
 t0 = time.time()
 for s in range(STEPS + 1):
     if s % 100 == 0:
@@ -40,8 +41,11 @@ for s in range(STEPS + 1):
     if s in CHECKPOINTS:
         W1 = model[0].weight.detach().T.double()
         W2 = model[2].weight.detach().T.double()
-        Kbar = label_kernel(true_label_ntk(Xtr.double(), ytr, W1, W2), ytr, P).numpy()
+        Kraw = label_kernel_raw(true_label_ntk(Xtr.double(), ytr, W1, W2), ytr, P).numpy()
+        d_ = np.sqrt(np.diag(Kraw))
+        Kbar = Kraw / np.outer(d_, d_)  # Eq. 106
         kernels[s] = Kbar
+        raw_kernels[s] = Kraw
         evals, evecs = np.linalg.eigh(Kbar)
         top = [fourier_peak(evecs[:, -1 - i]) for i in range(4)]
         print(f"step {s:6d} train {tr:.3f} test {te:.3f} circulant {circulant_fraction(Kbar):.3f} "
@@ -53,7 +57,7 @@ for s in range(STEPS + 1):
     opt.step()
 
 np.savez_compressed(out / "label_kernels.npz", steps=np.array(list(kernels)),
-                    kernels=np.stack(list(kernels.values())))
+                    kernels=np.stack(list(kernels.values())), raw_kernels=np.stack(list(raw_kernels.values())))
 np.savetxt(out / "accuracy.csv", np.array(log), delimiter=",", header="step,train_acc,test_acc", comments="")
 summary = {}
 for s, K in kernels.items():

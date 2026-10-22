@@ -16,7 +16,7 @@ from matplotlib.colors import ListedColormap  # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from grok.analysis import (FORGET, GROK, MEMORIZE, NOFIT, boundary_points, classify,  # noqa: E402
                            first_crossing, fit_inverse, fit_powerlaw, load_sweep)
-from grok.ntk import circulant_amplitude, circulant_fraction, fourier_peak  # noqa: E402
+from grok.ntk import circulant_amplitude, circulant_fraction, circulant_spectrum, fourier_peak  # noqa: E402
 from grok.sweep import PAPER_LRS, PAPER_WDS  # noqa: E402
 
 FIG, RES = Path("figures"), Path("results")
@@ -127,6 +127,13 @@ def sweep_figures():
     if ok.sum() >= 5:
         k, c, r2 = fit_powerlaw(x[ok], s10[ok])
         k90, c90, r290 = fit_powerlaw(x[s90 > 0], s90[s90 > 0])
+        # Theory with the fitting offset: s10 = s_fit + C/(lr*wd), s_fit ~ alpha/lr
+        #   =>  lr * s10 = alpha + C / wd   (linear in 1/wd)
+        yy, xx = lr[g][ok] * s10[ok], 1.0 / wd[g][ok]
+        C_off, alpha = np.polyfit(xx, yy, 1)
+        r2_off = 1 - np.sum((yy - (alpha + C_off * xx)) ** 2) / np.sum((yy - yy.mean()) ** 2)
+        metrics["timing_law_with_offset"] = dict(alpha=float(alpha), C=float(C_off), r2=float(r2_off),
+                                                 note="lr*s10 = alpha + C/wd")
         metrics["timing_law"] = dict(
             n_runs=int(ok.sum()), slope_s10=k, r2_s10=r2, slope_s90=k90, r2_s90=r290,
             median_lr_wd_s10=float(np.median(lr[g][ok] * wd[g][ok] * s10[ok])),
@@ -146,6 +153,19 @@ def sweep_figures():
         fig.savefig(FIG / "fig3b_timing_law.png", dpi=160)
         plt.close(fig)
 
+        fig, ax = plt.subplots(figsize=(6.4, 5))
+        ax.scatter(xx, yy, s=26, color=C_GROK, edgecolor=SURFACE, lw=0.8, label="grokking runs")
+        xs = np.linspace(0, xx.max() * 1.05, 50)
+        ax.plot(xs, alpha + C_off * xs, color=INK, lw=1.6,
+                label=f"η·s₁₀ = {alpha:.0f} + {C_off:.2f}/λ   (R² {r2_off:.2f})")
+        ax.set_xlabel("1 / λ")
+        ax.set_ylabel("η × (first update with held-out acc ≥ 10%)")
+        ax.set_title("Same data, with the fitting stage as an offset", loc="left", fontsize=11)
+        ax.legend(frameon=False, loc="upper left")
+        fig.tight_layout()
+        fig.savefig(FIG / "fig3b_timing_law_offset.png", dpi=160)
+        plt.close(fig)
+
 
 def ntk_figure():
     path = RES / "ntk97" / "label_kernels.npz"
@@ -163,25 +183,51 @@ def ntk_figure():
                             first_train_100=first_crossing(acc[:, 1], 0.999),
                             first_test_50=first_crossing(acc[:, 2], 0.5),
                             first_test_90=first_crossing(acc[:, 2], 0.9))
+    raw = z["raw_kernels"] if "raw_kernels" in z.files else None
+    if raw is not None:
+        spec = np.array([circulant_spectrum(K) for K in raw])  # [T, p]
+        top_k = int(np.argmax(spec[-1, 1:])) + 1
+        # strongest non-constant Fourier mode, measured above the typical mode: the diagonal adds
+        # the same constant to every frequency, so subtracting the median removes it exactly
+        task = spec[:, 1:].max(1) - np.median(spec[:, 1:], axis=1)
+        scale = np.array([np.mean(np.diag(K)) for K in raw])
+        metrics["ntk97"].update(raw_top_fourier_eigenvalue=task.tolist(), raw_mean_diagonal=scale.tolist(),
+                                top_frequency_at_end=top_k)
     show = [s for s in (0, 3000, 8000, 20000) if s in steps]
-    fig = plt.figure(figsize=(15, 6.2))
-    gs = fig.add_gridspec(2, len(show), height_ratios=[1.6, 1])
+    fig = plt.figure(figsize=(15, 7.4))
+    gs = fig.add_gridspec(2, 4, height_ratios=[1.25, 1])
     for i, s in enumerate(show):
         ax = fig.add_subplot(gs[0, i])
-        K = Ks[list(steps).index(s)]
-        ax.imshow(K - K.mean(), cmap="RdBu_r", vmin=-np.abs(K - K.mean()).max(), vmax=np.abs(K - K.mean()).max())
-        ax.set_title(f"update {s:,}\ncirculant share {circulant_fraction(K):.2f}", fontsize=10)
+        K = Ks[list(steps).index(s)].copy()
+        np.fill_diagonal(K, np.nan)  # diagonal is 1 by construction; hide it to show structure
+        K = K - np.nanmean(K)
+        lim = np.nanmax(np.abs(K))
+        ax.imshow(K, cmap="RdBu_r", vmin=-lim, vmax=lim)
+        ax.set_title(f"update {s:,}  (circulant share {circulant_fraction(Ks[list(steps).index(s)]):.2f})",
+                     fontsize=10)
         ax.set_xticks([]); ax.set_yticks([]); ax.grid(False)
-    ax = fig.add_subplot(gs[1, :])
-    ax.plot(acc[:, 0], acc[:, 1], color=C_MEM, label="train accuracy")
-    ax.plot(acc[:, 0], acc[:, 2], color=C_GROK, label="held-out accuracy")
-    ax.plot(steps, circ, color=INK, marker="o", ms=8, lw=1.6, label="circulant share of label NTK (off-diagonal)")
-    ax.plot(steps, peaks, color=C_FORGET, marker="s", ms=8, lw=1.6,
-            label="top-4 eigenvectors: power in one Fourier frequency")
+    t_fit = first_crossing(acc[:, 1], 0.999)
+    ax = fig.add_subplot(gs[1, :2])
+    ax.plot(acc[:, 0], acc[:, 1], color=C_MEM, label="train acc")
+    ax.plot(acc[:, 0], acc[:, 2], color=C_GROK, label="held-out acc")
+    ax.plot(steps, circ, color=INK, marker="o", ms=6, lw=1.6, label="circulant share (off-diag)")
+    ax.plot(steps, peaks, color=C_FORGET, marker="s", ms=6, lw=1.6, label="top-4 eigvec Fourier peak")
+    if t_fit:
+        ax.axvline(t_fit, color=INK2, ls=":", lw=1)
+        ax.text(t_fit, 0.03, " train acc = 100%", color=INK2, fontsize=9)
     ax.set_xlabel("update"); ax.set_ylim(-0.02, 1.02)
-    ax.legend(frameon=False, loc="center right")
-    fig.suptitle("Label-space NTK keeps organizing into Fourier (circulant) structure after the training set is fit "
-                 "(mod 97)", x=0.01, ha="left")
+    ax.set_title("Normalized structure (shape only)", loc="left", fontsize=10)
+    ax.legend(frameon=False, loc="lower right", fontsize=9)
+    if raw is not None:
+        ax = fig.add_subplot(gs[1, 2:])
+        ax.plot(steps, task, color=INK, marker="o", ms=6, lw=1.6,
+                label=f"strongest Fourier mode above median (k={top_k} at end)")
+        if t_fit:
+            ax.axvline(t_fit, color=INK2, ls=":", lw=1)
+        ax.set_xlabel("update"); ax.set_ylim(bottom=0)
+        ax.set_title("Raw task-aligned NTK strength (proxy for the paper's Λ)", loc="left", fontsize=10)
+        ax.legend(frameon=False, loc="lower right", fontsize=9)
+    fig.suptitle("Label-space NTK of the mod-97 MLP develops Fourier (circulant) structure", x=0.01, ha="left")
     fig.tight_layout()
     fig.savefig(FIG / "fig2_ntk_fourier.png", dpi=160)
     plt.close(fig)
@@ -193,20 +239,28 @@ def ridge_figure():
         return
     summary = json.loads(path.read_text())
     metrics["ridge"] = summary
-    fig, axes = plt.subplots(1, len(summary), figsize=(6 * len(summary), 4.6), squeeze=False)
-    for ax, name in zip(axes[0], summary):
-        z = np.load(RES / "ridge" / f"{name}.npz")
-        keep = np.abs(z["yj"]) > 1e-3 * np.abs(z["yj"]).max()
-        lam, ratio = z["evals"][keep], (z["sj"] / z["yj"])[keep]
-        ax.scatter(lam, -ratio, s=10, color=C_GROK, alpha=0.6, label="measured  −σⱼ / yⱼ")
-        ls = np.logspace(np.log10(max(lam.min(), 1e-6)), np.log10(lam.max()), 200)
-        ax.plot(ls, z["c"] / (ls + z["c"]), color=INK, lw=1.6, label="Theorem 1:  c / (Λⱼ + c)")
-        ax.set_xscale("log"); ax.set_yscale("log")
-        ax.set_xlabel("NTK eigenvalue Λⱼ")
-        ax.set_ylabel("fraction of target left as error")
-        ax.set_title(f"{name} cell: rel. error {summary[name]['relative_error_vs_ridge_prediction']:.1e}",
-                     loc="left", fontsize=11)
-        ax.legend(frameon=False)
+    states = [("after_24k_sgd", "", "after 24,000 SGD updates"), ("after_settling", "_settled", "settled to a stationary point")]
+    fig, axes = plt.subplots(len(summary), 2, figsize=(12, 4.4 * len(summary)), squeeze=False)
+    for r, name in enumerate(summary):
+        for col, (key, suffix, label) in enumerate(states):
+            ax = axes[r, col]
+            if key not in summary[name]:
+                ax.set_visible(False)
+                continue
+            z = np.load(RES / "ridge" / f"{name}{suffix}.npz")
+            keep = np.abs(z["yj"]) > 1e-3 * np.abs(z["yj"]).max()
+            lam, ratio = z["evals"][keep], (z["sj"] / z["yj"])[keep]
+            pos = (lam > 0) & (-ratio > 0)
+            ax.scatter(lam[pos], -ratio[pos], s=6, color=C_GROK, alpha=0.35, lw=0, label="measured  −σⱼ / yⱼ")
+            ls = np.logspace(np.log10(lam[pos].min()), np.log10(lam[pos].max()), 200)
+            ax.plot(ls, z["c"] / (ls + z["c"]), color=INK, lw=1.8, label="Theorem 1:  c / (Λⱼ + c)")
+            ax.set_xscale("log"); ax.set_yscale("log")
+            ax.set_xlabel("NTK eigenvalue Λⱼ")
+            ax.set_ylabel("share of target left as error")
+            st = summary[name][key]
+            ax.set_title(f"{name} cell, {label}\nrel. error {st['relative_error_vs_ridge_prediction']:.2g}, "
+                         f"|∇obj|/|∇data| = {st['grad_norm_ratio']:.2g}", loc="left", fontsize=10)
+            ax.legend(frameon=False, loc="lower left", fontsize=9)
     fig.tight_layout()
     fig.savefig(FIG / "thm1_ridge_residual.png", dpi=160)
     plt.close(fig)

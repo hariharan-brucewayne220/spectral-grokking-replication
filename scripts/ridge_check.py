@@ -30,11 +30,8 @@ Xtr, ytr, _, _ = d.split()
 n, p = len(ytr), d.p
 Y = torch.nn.functional.one_hot(ytr, p).double().reshape(-1)
 
-summary = {}
-for name, (lr, wd) in CELLS.items():
-    _, _, model = train_reference(d, lr, wd, 24_000)
-    W1 = model[0].weight.detach().T.double()
-    W2 = model[2].weight.detach().T.double()
+def analyze(W1, W2, wd, tag):
+    """Compare the residual at weights (W1, W2) with sigma* computed from their own NTK."""
     X = Xtr.double()
     f = (torch.relu(X @ W1) @ W2).reshape(-1)
     sigma = f - Y
@@ -45,21 +42,45 @@ for name, (lr, wd) in CELLS.items():
     pred_ratio = -c / (evals + c)
     sigma_star = U @ (pred_ratio * yj)
     rel_err = (torch.linalg.norm(sigma - sigma_star) / torch.linalg.norm(sigma)).item()
-    # stationarity check: |grad of objective| relative to |data-gradient term|
-    params = [model[0].weight, model[2].weight]
-    loss = torch.nn.functional.mse_loss(model(Xtr), torch.nn.functional.one_hot(ytr, p).float())
-    g = torch.autograd.grad(loss, params)
-    full_g = torch.cat([(gi + wd * pi).reshape(-1) for gi, pi in zip(g, params)]).norm().item()
-    data_g = torch.cat([gi.reshape(-1) for gi in g]).norm().item()
+    W1g, W2g = W1.clone().requires_grad_(), W2.clone().requires_grad_()
+    loss = ((torch.relu(X @ W1g) @ W2g - Y.view(n, p)) ** 2).mean()
+    g1, g2 = torch.autograd.grad(loss, (W1g, W2g))
+    full_g = torch.cat([(g1 + wd * W1).reshape(-1), (g2 + wd * W2).reshape(-1)]).norm().item()
+    data_g = torch.cat([g1.reshape(-1), g2.reshape(-1)]).norm().item()
     keep = yj.abs() > 1e-3 * yj.abs().max()
-    np.savez_compressed(out / f"{name}.npz", evals=evals.numpy(), yj=yj.numpy(), sj=sj.numpy(), c=c)
-    summary[name] = dict(
-        lr=lr, wd=wd, c=c, residual_norm=sigma.norm().item(), target_norm=Y.norm().item(),
-        relative_error_vs_ridge_prediction=rel_err,
-        grad_norm_ratio=full_g / data_g,
-        corr_measured_vs_predicted_ratio=float(np.corrcoef(
-            (sj[keep] / yj[keep]).numpy(), pred_ratio[keep].numpy())[0, 1]),
-        n_directions_compared=int(keep.sum()),
-    )
-    print(name, summary[name], flush=True)
+    np.savez_compressed(out / f"{tag}.npz", evals=evals.numpy(), yj=yj.numpy(), sj=sj.numpy(), c=c)
+    return dict(c=c, residual_norm=sigma.norm().item(), target_norm=Y.norm().item(),
+                relative_error_vs_ridge_prediction=rel_err, grad_norm_ratio=full_g / data_g,
+                corr_measured_vs_predicted_ratio=float(np.corrcoef(
+                    (sj[keep] / yj[keep]).numpy(), pred_ratio[keep].numpy())[0, 1]),
+                n_directions_compared=int(keep.sum()))
+
+
+def settle(W1, W2, wd, iters=3000):
+    """Polish to a nearby stationary point of mean((f-y)^2) + wd/2 |theta|^2 with L-BFGS in float64."""
+    W1 = W1.contiguous().clone().requires_grad_()
+    W2 = W2.contiguous().clone().requires_grad_()
+    X, Yt = Xtr.double(), Y.view(n, p)
+    opt = torch.optim.LBFGS([W1, W2], lr=1, max_iter=iters, tolerance_grad=1e-14,
+                            tolerance_change=1e-16, history_size=50, line_search_fn="strong_wolfe")
+
+    def closure():
+        opt.zero_grad()
+        obj = ((torch.relu(X @ W1) @ W2 - Yt) ** 2).mean() + 0.5 * wd * (W1.pow(2).sum() + W2.pow(2).sum())
+        obj.backward()
+        return obj
+    opt.step(closure)
+    return W1.detach(), W2.detach()
+
+
+summary = {}
+for name, (lr, wd) in CELLS.items():
+    _, _, model = train_reference(d, lr, wd, 24_000)
+    W1 = model[0].weight.detach().T.double()
+    W2 = model[2].weight.detach().T.double()
+    summary[name] = dict(lr=lr, wd=wd, after_24k_sgd=analyze(W1, W2, wd, name))
+    print(name, "after SGD", summary[name]["after_24k_sgd"], flush=True)
+    W1s, W2s = settle(W1, W2, wd)
+    summary[name]["after_settling"] = analyze(W1s, W2s, wd, f"{name}_settled")
+    print(name, "settled", summary[name]["after_settling"], flush=True)
 (out / "summary.json").write_text(json.dumps(summary, indent=2))

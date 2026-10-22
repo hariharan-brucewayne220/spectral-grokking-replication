@@ -35,12 +35,26 @@ def true_label_ntk(X, y, W1, W2):
     return t1 + t2
 
 
-def label_kernel(K_tl, y, p):
-    """Average K_TL over label groups, then diagonal-normalize (Eq. 106). Returns [p, p]."""
+def label_kernel_raw(K_tl, y, p):
+    """Average K_TL over label groups (the matrix K-tilde before Eq. 106). Returns [p, p]."""
     Y = torch.nn.functional.one_hot(y, p).to(K_tl.dtype)
     counts = Y.sum(0)
     Kt = (Y.T @ K_tl @ Y) / (counts[:, None] * counts[None, :])
-    Kt = 0.5 * (Kt + Kt.T)
+    return 0.5 * (Kt + Kt.T)
+
+
+def circulant_spectrum(K):
+    """Eigenvalues of the circulant part of K, indexed by Fourier frequency k = 0..p-1."""
+    K = np.asarray(K, float)
+    p = K.shape[0]
+    idx = (np.arange(p)[None, :] - np.arange(p)[:, None]) % p
+    row = np.array([K[idx == k].mean() for k in range(p)])
+    return np.real(np.fft.fft(row))
+
+
+def label_kernel(K_tl, y, p):
+    """Average K_TL over label groups, then diagonal-normalize (Eq. 106). Returns [p, p]."""
+    Kt = label_kernel_raw(K_tl, y, p)
     d = torch.sqrt(torch.diagonal(Kt))
     return Kt / (d[:, None] * d[None, :])
 

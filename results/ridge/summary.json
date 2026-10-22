@@ -1,0 +1,24 @@
+{
+  "grokking": {
+    "lr": 2.36316,
+    "wd": 0.000118329,
+    "c": 1.0015366559999999,
+    "residual_norm": 3.277926895410035,
+    "target_norm": 19.183326093250876,
+    "relative_error_vs_ridge_prediction": 0.2534870909078793,
+    "grad_norm_ratio": 0.4145885028528278,
+    "corr_measured_vs_predicted_ratio": 0.4996552335902785,
+    "n_directions_compared": 7380
+  },
+  "memorization": {
+    "lr": 0.87048,
+    "wd": 3.293e-05,
+    "c": 0.27871952,
+    "residual_norm": 2.2238584809662543,
+    "target_norm": 19.183326093250876,
+    "relative_error_vs_ridge_prediction": 0.2815225374009215,
+    "grad_norm_ratio": 0.6378240971379774,
+    "corr_measured_vs_predicted_ratio": 0.4790118374345207,
+    "n_directions_compared": 8246
+  }
+}
