@@ -69,6 +69,17 @@ def sweep_figures():
     lr, wd = S["lr"], S["wd"]
     counts = {ph: int((phases == ph).sum()) for ph in (GROK, MEMORIZE, FORGET, NOFIT)}
     metrics["sweep"] = dict(n_runs=int(len(phases)), phase_counts=counts)
+    # Other boundaries (paper: stability lr ~ 18.9 at low decay, mode cutoff wd ~ 7e-4, fit cutoff ~ 8.4e-4)
+    low = wd < 1e-4
+    stab = [lr[low & (wd == w) & (phases == NOFIT)].min() for w in np.unique(wd[low])
+            if (low & (wd == w) & (phases == NOFIT)).any()]
+    mid = lr < (np.exp(np.mean(np.log(stab))) if stab else np.inf)
+    fails = (phases == FORGET) | (phases == NOFIT)
+    metrics["sweep"].update(
+        stability_lr_low_decay=float(np.exp(np.mean(np.log(stab)))) if stab else None,
+        max_wd_with_grokking=float(wd[phases == GROK].max()) if (phases == GROK).any() else None,
+        min_wd_where_fit_fails=float(wd[mid & fails].min()) if (mid & fails).any() else None,
+        max_wd_run=float(wd.max()))
 
     # phase map on the paper's grid (cells we did not run stay blank)
     code = {GROK: 0, MEMORIZE: 1, FORGET: 2, NOFIT: 3}

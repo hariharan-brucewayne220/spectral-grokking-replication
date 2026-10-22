@@ -1,2 +1,5 @@
 square 0 grad ratio 1.03e+00  rel err 8.47e-01  pre-acts near 0: 0.001
 square 50000 grad ratio 2.03e-02  rel err 2.95e-03  pre-acts near 0: 0.134
+square 100000 grad ratio 5.82e-04  rel err 1.32e-04  pre-acts near 0: 0.406
+square 150000 grad ratio 2.80e-05  rel err 6.40e-06  pre-acts near 0: 0.406
+square 200000 grad ratio 1.41e-06  rel err 3.21e-07  pre-acts near 0: 0.406
