@@ -16,9 +16,10 @@ See [`docs/report.html`](docs/report.html) for the full table and figures. Every
 | Claim | Result |
 |---|---|
 | Paper's grokking cell first hits 90% held-out at update 8,300 | **8,300**, exact |
+| Phase map: memorize / grok / forget / no-fit regions, cutoffs | All four regions; grokking up to λ = 7.3e-4 (paper 7.0e-4), forgetting from 8.3e-4 (paper 8.4e-4), instability at η ≈ 20.6 (paper 18.9) |
 | Forgetting cell: peak train acc 0.948, final 0.204 | **0.948 / 0.204**, exact |
-| Grok boundary follows lr = A / wd, A = 1.09e-4 | A within ~2% of the paper |
-| Grokking time ∝ 1/(lr·wd) | log-log slope ≈ 0.96, R² ≈ 0.94 |
+| Grok boundary follows lr = A / wd, A = 1.09e-4 | A = 1.06e-4 (3% off), log-RMSE 0.110 vs their 0.120 |
+| Grokking time ∝ 1/(lr·wd) | Partly: slope 0.94 to 1.02 (R² 0.96) away from the phase boundaries; 0.59 if all 472 grokking runs are pooled, because runs near the decay cutoff and the instability edge slow down |
 | Task-aligned NTK keeps growing after the fit | Partly: Fourier shape forms mostly before the fit; raw strength keeps growing ~28% after it, then plateaus |
 | Post-fit residual is a ridge residual (Theorem 1) | Partly: trend clear; exact only for a smooth control network, ~25% off for ReLU because SGD never becomes stationary |
 | Robust across seeds | Learning-rate scaling matches in 5/5 seeds; weight-decay scaling weaker than proportional |

@@ -42,17 +42,17 @@
     }
   },
   "sweep": {
-    "n_runs": 1505,
+    "n_runs": 1890,
     "phase_counts": {
-      "grokking": 447,
-      "memorization": 733,
-      "forgetting": 0,
-      "no fitting": 325
+      "grokking": 472,
+      "memorization": 798,
+      "forgetting": 116,
+      "no fitting": 504
     },
     "stability_lr_low_decay": 20.570886693214966,
-    "max_wd_with_grokking": 0.0005565882610859764,
-    "min_wd_where_fit_fails": 4.9999999999999996e-06,
-    "max_wd_run": 0.0006368062258252966
+    "max_wd_with_grokking": 0.0007285855588449384,
+    "min_wd_where_fit_fails": 0.0008335925357347592,
+    "max_wd_run": 0.0018697922981467413
   },
   "boundary": {
     "A": 0.0001056804154093891,
@@ -63,20 +63,31 @@
     "paper_A": 0.00010916395,
     "paper_free_slope": -1.1681
   },
-  "timing_law_with_offset": {
-    "alpha": 16680.12148623434,
-    "C": 1.2853498371909662,
-    "r2": 0.03519881492023913,
-    "note": "lr*s10 = alpha + C/wd"
-  },
   "timing_law": {
-    "n_runs": 447,
-    "slope_s10": 0.6306039450785057,
-    "r2_s10": 0.6101931322142846,
-    "slope_s90": 0.7214007580640514,
-    "r2_s90": 0.7012019505444516,
-    "median_lr_wd_s10": 1.6620086595589243,
-    "predicted_slope": 1.0
+    "slope_s10": 0.5893364081923994,
+    "r2_s10": 0.5896189589289762,
+    "bulk_slope_s10": 0.9417696064343585,
+    "bulk_r2_s10": 0.9587821181743394,
+    "median_lr_wd_s10": 1.7105771503335816,
+    "slope_s50": 0.6462155563860379,
+    "r2_s50": 0.6503481527343797,
+    "bulk_slope_s50": 1.0019673165867191,
+    "bulk_r2_s50": 0.9606027896657907,
+    "median_lr_wd_s50": 2.3496201810854713,
+    "slope_s80": 0.6523723638976983,
+    "r2_s80": 0.6459162660199061,
+    "bulk_slope_s80": 1.0201831522401477,
+    "bulk_r2_s80": 0.9607720730037437,
+    "median_lr_wd_s80": 2.688029637357228,
+    "slope_s90": 0.6425025741232845,
+    "r2_s90": 0.6211426716339341,
+    "bulk_slope_s90": 1.021153262648359,
+    "bulk_r2_s90": 0.9618375595260843,
+    "median_lr_wd_s90": 2.873610464629529,
+    "n_runs": 472,
+    "n_bulk": 244,
+    "predicted_slope": 1.0,
+    "bulk_definition": "wd <= 2e-4 and lr <= 16"
   },
   "ntk97": {
     "steps": [

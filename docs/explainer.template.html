@@ -312,7 +312,7 @@ footer{padding-block:30px 50px;color:var(--ink-2);font-size:.9rem}
     <div class="words">
       <h3>The rule of thumb</h3>
       <p>Look only at the robots that got it. The paper predicts: <b>double the step size and double the tidy-up, and the "aha" comes 4 times sooner.</b> The time to "aha" goes like 1 ÷ (step size × tidy-up).</p>
-      <p>Each dot is one robot. If the rule is right, the dots follow the dashed line. They do, with a slope of <b class="mono" id="slopeVal">1.0</b> where the rule says exactly 1.</p>
+      <p>Each dot is one robot. If the rule is right, the dots follow the dashed line. In the middle of the map they do: a slope of <b class="mono" id="slopeVal">1.0</b>, where the rule says exactly 1. Robots near the edges of the map, where learning almost breaks, are slower than the rule says.</p>
       <p><span class="grown">grown-up words: transition time s ∝ (η λ)⁻¹</span></p>
     </div>
     <div class="pic">
@@ -338,13 +338,14 @@ footer{padding-block:30px 50px;color:var(--ink-2);font-size:.9rem}
   <div class="spread">
     <div class="words">
       <span class="eyebrow">Chapter 6 · Being honest</span>
-      <h2>Three things were only partly true</h2>
+      <h2>Four things were only partly true</h2>
       <p>Good scientists say what didn't work too. Here's what we found.</p>
     </div>
     <div class="pic">
       <ol class="steps" style="margin-top:0;grid-template-columns:minmax(0,1fr)">
         <li><b>The stripe starts early</b>Most of the "friends" stripe appears while the robot is still learning its homework, not only afterwards. Its strength does keep growing after, by about <span class="mono" id="ntkGrow">28%</span>, then stops.</li>
         <li><b>Step size and tidy-up aren't equal</b>Bigger steps speed up the "aha" exactly as predicted. A stronger tidy-up helps less than predicted: doubling it gives about <span class="mono" id="wdSpeed">1.5×</span>, not 2×. The first memorizing stage doesn't care about the tidy-up.</li>
+        <li><b>The rule of thumb bends near the edges</b>In the middle of the map, "aha" time follows 1 ÷ (step size × tidy-up) almost perfectly. Near the edges of the map, where learning nearly breaks, robots take up to 3× longer. The paper's theory actually predicts that slow-down near one edge.</li>
         <li><b>The robot never fully sits still</b>One formula in the paper is exact when learning settles down. With a smooth robot brain it matched to 7 digits. With the jagged kind (ReLU) the paper uses, learning keeps wiggling, so it's off by about <span class="mono" id="ridgeErr">25%</span>.</li>
       </ol>
     </div>
@@ -610,7 +611,7 @@ function lineChart(svg, { tr, te, xmax, w, h, pad = { l: 44, r: 12, t: 12, b: 32
   const gdots = el("g", {}, law);
   pts.forEach((p) => el("circle", { class: "dot", cx: X(Math.log10(p[0])), cy: Y(Math.log10(p[1])), r: 4.5, fill: "var(--sky)", opacity: 0.75 }, gdots));
   const sel = el("circle", { class: "sel", r: 8, cx: -20, cy: -20 }, law);
-  $("slopeVal").textContent = (DATA.timing.slope_s10 ?? 1).toFixed(2);
+  $("slopeVal").textContent = (DATA.timing.bulk_slope_s50 ?? 1).toFixed(2);
 
   const update = () => {
     const r = +wd.value, c = +lr.value, ph = G.phase[r][c];
@@ -645,7 +646,7 @@ function lineChart(svg, { tr, te, xmax, w, h, pad = { l: 44, r: 12, t: 12, b: 32
     ["Forgetting robot: best homework score", R.forgetting.peak_train, "0.948", "A robot with a very strong tidy-up learns its homework, then loses it.", "ok", 3],
     ["…and where it ends up", R.forgetting.final_train, "0.204", "Matches their number to the last digit.", "ok", 3],
     ["The aha boundary", B.A * 1e4, (B.paper_A * 1e4).toFixed(2), `Where "only memorized" turns into "got it" on the map. Ours is ${Apct.toFixed(1)}% off theirs (×10⁻⁴).`, Apct < 25 ? "ok" : "part", 2],
-    ["Rule-of-thumb slope", T.slope_s10, "1 (theory)", `How tightly the dots follow the dashed line (R² ${T.r2_s10?.toFixed(2)}).`, Math.abs(T.slope_s10 - 1) < 0.15 ? "ok" : "part", 2],
+    ["Rule-of-thumb slope", T.bulk_slope_s50, "1 (theory)", `In the middle of the map (R² ${T.bulk_r2_s50?.toFixed(2)}). Across every robot that got it, including ones near the edges: ${T.slope_s10?.toFixed(2)}.`, "part", 2],
     ["Robots trained", DATA.grid.n_runs, "7,560 in the paper", "We used every second setting of their grid, so each of ours sits on one of theirs.", "info", 0],
   ];
   const box = $("scores");
@@ -682,7 +683,8 @@ function lineChart(svg, { tr, te, xmax, w, h, pad = { l: 44, r: 12, t: 12, b: 32
     ["Forgetting cell: peak / final train acc", "0.948 / 0.204", `${R.forgetting.peak_train.toFixed(3)} / ${R.forgetting.final_train.toFixed(3)}`],
     ["Boundary η = A/λ: A", B.paper_A.toExponential(3), B.A.toExponential(3)],
     ["Boundary log-RMSE / free slope", "0.120 / −1.17", `${B.log_rmse.toFixed(3)} / ${B.free_slope.toFixed(2)}`],
-    ["log s₁₀ vs log (ηλ)⁻¹ slope, R²", "1 (predicted)", `${T.slope_s10.toFixed(3)}, ${T.r2_s10.toFixed(2)}`],
+    ["log s₅₀ vs log (ηλ)⁻¹ slope, bulk (λ ≤ 2e-4, η ≤ 16)", "1 (predicted)", `${T.bulk_slope_s50.toFixed(3)}, R² ${T.bulk_r2_s50.toFixed(2)}`],
+    ["Same, all grokking runs (s₁₀)", "n/a", `${T.slope_s10.toFixed(3)}, R² ${T.r2_s10.toFixed(2)}`],
     ["Networks trained (stride-2 grid)", "7,560", fmt(DATA.grid.n_runs)],
     ["Ridge residual rel. error (ReLU, 24k updates)", "exact at stationarity", re.toFixed(2)],
   ];

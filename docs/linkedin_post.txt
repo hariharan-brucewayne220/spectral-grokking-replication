@@ -8,8 +8,8 @@ The paper's explanation: weight decay stops the network from fitting its trainin
 
 What I found:
 • The exact numbers printed in the paper reproduced to the digit. Their example run first hits 90% held-out accuracy at step 8,300. Mine: 8,300.
-• Across {N_RUNS} networks, the boundary between "memorizes" and "groks" follows learning rate = A / weight decay, with A within {A_PCT}% of the paper's value.
-• Grokking time vs 1/(learning rate × weight decay) has a log-log slope of {SLOPE} (theory: 1).
+• Across 1,890 networks, the boundary between "memorizes" and "groks" follows learning rate = A / weight decay, with A within 3% of the paper's value. The points where training breaks down land close to theirs too (forgetting starts at weight decay 8.3e-4; theirs: 8.4e-4).
+• Away from the edges of that map, grokking time follows 1/(learning rate × weight decay) with a log-log slope of 1.00 (theory: 1). Near the edges it bends, and runs take up to 3x longer.
 • Not everything held up cleanly. Learning rate and weight decay don't act symmetrically: raising the learning rate speeds grokking exactly as predicted, while doubling weight decay gives only ~1.5x. And a formula the paper proves for the leftover error matches to 7 digits on a smooth network, but is off by ~25% on the ReLU networks actually used, because gradient descent never fully settles there.
 
 Three things I'd tell anyone attempting a replication:

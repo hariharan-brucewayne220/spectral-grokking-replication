@@ -73,12 +73,10 @@ def sweep_figures():
     low = wd < 1e-4
     stab = [lr[low & (wd == w) & (phases == NOFIT)].min() for w in np.unique(wd[low])
             if (low & (wd == w) & (phases == NOFIT)).any()]
-    mid = lr < (np.exp(np.mean(np.log(stab))) if stab else np.inf)
-    fails = (phases == FORGET) | (phases == NOFIT)
     metrics["sweep"].update(
         stability_lr_low_decay=float(np.exp(np.mean(np.log(stab)))) if stab else None,
         max_wd_with_grokking=float(wd[phases == GROK].max()) if (phases == GROK).any() else None,
-        min_wd_where_fit_fails=float(wd[mid & fails].min()) if (mid & fails).any() else None,
+        min_wd_where_fit_fails=float(wd[phases == FORGET].min()) if (phases == FORGET).any() else None,
         max_wd_run=float(wd.max()))
 
     # phase map on the paper's grid (cells we did not run stay blank)
@@ -113,7 +111,7 @@ def sweep_figures():
         metrics["boundary"] = dict(A=A, log_rmse=rmse, free_slope=k, free_slope_r2=r2,
                                    n_points=int(fit_mask.sum()), paper_A=PAPER_A,
                                    paper_free_slope=PAPER_SLOPE)
-        ax.plot(wline, A / wline, color=INK, lw=1.6, label=f"our fit  lr = {A:.3g} / wd")
+        ax.plot(wline, A / wline, color=INK, lw=1.6, label=f"our fit  lr = {A:.2e} / wd".replace("e-04", "e-4"))
         ax.scatter(pts[:, 0], pts[:, 1], s=22, color=SURFACE, edgecolor=INK, lw=1.2, zorder=3,
                    label="boundary midpoints")
     ax.set_ylim(L[0] / 1.1, L[-1] * 1.1); ax.set_xlim(W[0] / 1.1, W[-1] * 1.1)
@@ -129,53 +127,54 @@ def sweep_figures():
     fig.savefig(FIG / "fig3a_phase_map.png", dpi=160)
     plt.close(fig)
 
-    # transition-time scaling: s10 vs 1/(lr*wd) for runs that grok
+    # transition-time scaling: first held-out crossings vs 1/(lr*wd) for runs that grok.
+    # "Bulk" = away from the paper's own boundaries: wd <= 2e-4 (its inverse-decay fit range) and
+    # lr <= 16 (below its stability edge ~18.9). Chosen after seeing the full-range fit; both are reported.
     g = phases == GROK
-    s10 = np.array([first_crossing(t, 0.10) for t in S["test_acc"][g]], dtype=float)
-    s90 = np.array([first_crossing(t, 0.90) for t in S["test_acc"][g]], dtype=float)
     x = 1.0 / (lr[g] * wd[g])
-    ok = s10 > 0
-    if ok.sum() >= 5:
-        k, c, r2 = fit_powerlaw(x[ok], s10[ok])
-        k90, c90, r290 = fit_powerlaw(x[s90 > 0], s90[s90 > 0])
-        # Theory with the fitting offset: s10 = s_fit + C/(lr*wd), s_fit ~ alpha/lr
-        #   =>  lr * s10 = alpha + C / wd   (linear in 1/wd)
-        yy, xx = lr[g][ok] * s10[ok], 1.0 / wd[g][ok]
-        C_off, alpha = np.polyfit(xx, yy, 1)
-        r2_off = 1 - np.sum((yy - (alpha + C_off * xx)) ** 2) / np.sum((yy - yy.mean()) ** 2)
-        metrics["timing_law_with_offset"] = dict(alpha=float(alpha), C=float(C_off), r2=float(r2_off),
-                                                 note="lr*s10 = alpha + C/wd")
-        metrics["timing_law"] = dict(
-            n_runs=int(ok.sum()), slope_s10=k, r2_s10=r2, slope_s90=k90, r2_s90=r290,
-            median_lr_wd_s10=float(np.median(lr[g][ok] * wd[g][ok] * s10[ok])),
-            predicted_slope=1.0)
-        fig, ax = plt.subplots(figsize=(6.4, 5))
-        ax.scatter(x[ok], s10[ok], s=26, color=C_GROK, edgecolor=SURFACE, lw=0.8, label="grokking runs")
-        xs = np.logspace(np.log10(x[ok].min()), np.log10(x[ok].max()), 50)
-        ax.plot(xs, np.exp(c) * xs ** k, color=INK, lw=1.6, label=f"fit: slope {k:.2f}, R² {r2:.2f}")
-        ax.plot(xs, np.median(s10[ok] / x[ok]) * xs, color=INK2, ls="--", lw=1.4,
-                label="theory: slope 1 (not fitted)")
-        ax.set_xscale("log"); ax.set_yscale("log")
-        ax.set_xlabel("1 / (η λ)")
-        ax.set_ylabel("first update with held-out acc ≥ 10%")
-        ax.set_title("Grokking time scales as 1/(learning rate × weight decay)", loc="left", fontsize=11)
-        ax.legend(frameon=False)
-        fig.tight_layout()
-        fig.savefig(FIG / "fig3b_timing_law.png", dpi=160)
-        plt.close(fig)
-
-        fig, ax = plt.subplots(figsize=(6.4, 5))
-        ax.scatter(xx, yy, s=26, color=C_GROK, edgecolor=SURFACE, lw=0.8, label="grokking runs")
-        xs = np.linspace(0, xx.max() * 1.05, 50)
-        ax.plot(xs, alpha + C_off * xs, color=INK, lw=1.6,
-                label=f"η·s₁₀ = {alpha:.0f} + {C_off:.2f}/λ   (R² {r2_off:.2f})")
-        ax.set_xlabel("1 / λ")
-        ax.set_ylabel("η × (first update with held-out acc ≥ 10%)")
-        ax.set_title("Same data, with the fitting stage as an offset", loc="left", fontsize=11)
-        ax.legend(frameon=False, loc="upper left")
-        fig.tight_layout()
-        fig.savefig(FIG / "fig3b_timing_law_offset.png", dpi=160)
-        plt.close(fig)
+    bulk = (wd[g] <= 2e-4) & (lr[g] <= 16)
+    tl = {}
+    for thr in (0.10, 0.50, 0.80, 0.90):
+        s = np.array([first_crossing(t, thr) or 0 for t in S["test_acc"][g]], dtype=float)
+        ok = s > 0
+        if ok.sum() < 5:
+            continue
+        k, c, r2 = fit_powerlaw(x[ok], s[ok])
+        kb, cb, r2b = fit_powerlaw(x[ok & bulk], s[ok & bulk])
+        tag = f"s{int(thr * 100)}"
+        tl.update({f"slope_{tag}": k, f"r2_{tag}": r2, f"bulk_slope_{tag}": kb, f"bulk_r2_{tag}": r2b,
+                   f"median_lr_wd_{tag}": float(np.median(lr[g][ok] * wd[g][ok] * s[ok]))})
+        if thr == 0.10:
+            s10, ok10, c10, cb10 = s, ok, c, cb
+    if not tl:
+        return
+    tl.update(n_runs=int(ok10.sum()), n_bulk=int((ok10 & bulk).sum()), predicted_slope=1.0,
+              bulk_definition="wd <= 2e-4 and lr <= 16")
+    metrics["timing_law"] = tl
+    near_cut = wd[g] > 2e-4
+    fig, ax = plt.subplots(figsize=(6.8, 5.2))
+    groups = [(bulk, C_GROK, f"bulk (λ ≤ 2e-4, η ≤ 16): {int((ok10 & bulk).sum())} runs"),
+              (near_cut, C_MEM, "near the decay cutoff (λ > 2e-4)"),
+              (~bulk & ~near_cut, C_FORGET, "near the instability edge (η > 16)")]
+    for m, col, lab in groups:
+        ax.scatter(x[ok10 & m], s10[ok10 & m], s=24, color=col, edgecolor=SURFACE, lw=0.7, label=lab)
+    xs = np.logspace(np.log10(x[ok10].min()), np.log10(x[ok10].max()), 50)
+    xb = np.logspace(np.log10(x[ok10 & bulk].min()), np.log10(x[ok10 & bulk].max()), 50)
+    ax.plot(xb, np.exp(cb10) * xb ** tl["bulk_slope_s10"], color=INK, lw=1.8,
+            label=f"bulk fit: slope {tl['bulk_slope_s10']:.2f}, R² {tl['bulk_r2_s10']:.2f}")
+    ax.plot(xs, np.exp(c10) * xs ** tl["slope_s10"], color=INK2, lw=1.2, ls=":",
+            label=f"all runs: slope {tl['slope_s10']:.2f}, R² {tl['r2_s10']:.2f}")
+    ax.set_xscale("log"); ax.set_yscale("log")
+    ax.set_xlabel("1 / (η λ)")
+    ax.set_ylabel("first update with held-out acc ≥ 10%")
+    ax.set_title("Grokking time vs 1/(learning rate × weight decay)", loc="left", fontsize=11)
+    ax.legend(frameon=False, fontsize=8.5, loc="upper left")
+    fig.tight_layout()
+    fig.savefig(FIG / "fig3b_timing_law.png", dpi=160)
+    plt.close(fig)
+    old = FIG / "fig3b_timing_law_offset.png"
+    if old.exists():
+        old.unlink()
 
 
 def ntk_figure():

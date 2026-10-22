@@ -92,7 +92,7 @@ pc = sw.get("phase_counts", {})
 c2 = "pass" if all(pc.get(k, 0) > 0 for k in ("grokking", "memorization", "forgetting", "no fitting")) else "partial"
 A_ratio = bd.get("A", float("nan")) / 1.0916395e-4
 c3 = "pass" if abs(math.log(A_ratio)) < math.log(1.25) else "partial"
-c4 = "pass" if 0.85 <= tl.get("slope_s10", 0) <= 1.15 and tl.get("r2_s10", 0) > 0.8 else "partial"
+c4 = "partial"  # holds in the bulk (slope ~1), not over all grokking runs
 
 g24, g300 = ridge["grokking"]["after_24000"], ridge["grokking"]["after_300000"]
 m24 = ridge["memorization"]["after_24000"]
@@ -118,14 +118,21 @@ rows = [
      "4 regions (84×90 grid)", f"{sum(pc.values()):,} runs: " + ", ".join(f"{k} {v}" for k, v in pc.items()), c2,
      f"Highest λ that still groks: {fmt(sw.get('max_wd_with_grokking'))} (paper's mode cutoff 7.0e-4). "
      f"Fit fails from λ ≈ {fmt(sw.get('min_wd_where_fit_fails'))} (paper 8.4e-4). "
-     f"Instability at η ≈ {fmt(sw.get('stability_lr_low_decay'))} for λ &lt; 1e-4 (paper ≈ 18.9)."),
+     f"Instability at η ≈ {fmt(sw.get('stability_lr_low_decay'))} for λ &lt; 1e-4 (paper ≈ 18.9). "
+     "We also see the paper's detached high-learning-rate island (η ≈ 30 to 50)."),
     ("C3", "Memorize/grok boundary follows η = A/λ",
      "A = 1.092e-4, log-RMSE 0.120, free slope −1.17",
      f"A = {fmt(bd.get('A'))}, log-RMSE {fmt(bd.get('log_rmse'))}, free slope {fmt(bd.get('free_slope'))}",
      c3, f"A within {abs(A_ratio - 1) * 100:.1f}% of the paper, from {bd.get('n_points')} boundary points."),
     ("C4", "Grokking time scales as 1/(ηλ) (slope 1 in log-log)",
-     "slope 1 (shown, not fitted)", f"slope {fmt(tl.get('slope_s10'))}, R² {fmt(tl.get('r2_s10'))} over {tl.get('n_runs')} runs",
-     c4, f"Using the 90% crossing instead: slope {fmt(tl.get('slope_s90'))}, R² {fmt(tl.get('r2_s90'))}."),
+     "slope 1 (shown, not fitted)",
+     f"bulk ({tl.get('n_bulk')} runs): slope {fmt(tl.get('bulk_slope_s10'))} (s₁₀), {fmt(tl.get('bulk_slope_s50'))} (s₅₀), "
+     f"{fmt(tl.get('bulk_slope_s80'))} (s₈₀), R² ≈ {fmt(tl.get('bulk_r2_s50'), 2)}; all {tl.get('n_runs')} grokking runs: "
+     f"slope {fmt(tl.get('slope_s10'))}, R² {fmt(tl.get('r2_s10'), 2)}",
+     c4, "Tight 1/(ηλ) scaling away from the boundaries (bulk = λ ≤ 2e-4, the paper's own fit range, and η ≤ 16, below "
+         "its stability edge; chosen after seeing the full-range fit). Near the decay cutoff runs grok up to ~3× slower "
+         "(critical slowing, which the theory predicts), near the instability edge they slow down too, and the fastest "
+         "runs hit a floor of ~700 to 1,000 updates set by the fitting stage."),
     ("C5", "Label-space NTK develops Fourier structure that keeps growing after training accuracy saturates (mod 97)",
      "periodic structure strengthens from update 3,000 to 20,000",
      f"task-aligned strength {task_pre:.4f} (update 3,000) → {task_fit:.4f} (fit, {fit_step:,}) → {task_end:.4f} (20,000)",
@@ -173,7 +180,7 @@ n_part = sum(r[4] == "partial" for r in rows)
 figures = [
     ("fig7_reference_cells.png", "Four representative cells (paper Fig. 7). Same hyperparameters, independent code."),
     ("fig3a_phase_map.png", "Phase map on every second point of the paper's 84×90 grid. Dashed: paper's fitted boundary. Solid: ours."),
-    ("fig3b_timing_law.png", "First update reaching 10% held-out accuracy vs 1/(ηλ), all grokking runs. Dashed line has slope 1 and is not fitted."),
+    ("fig3b_timing_law.png", "First update reaching 10% held-out accuracy vs 1/(ηλ), all grokking runs, colored by region. The bulk follows slope ≈ 1; runs near the decay cutoff and the instability edge are slower."),
     ("fig2_ntk_fourier.png", "Mod-97 label-space NTK (diagonal hidden). Right: raw strength of the dominant Fourier mode above the median mode."),
     ("thm1_ridge_residual.png", "Theorem 1: share of each NTK eigendirection's target left as error, measured vs predicted c/(Λ+c)."),
 ]
@@ -185,7 +192,8 @@ report = f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta na
 <p class="sub">Pracher, de Jong, Lieshaus, Jeffares, Rulands · arXiv 2609.26679 (Sep 2026) · independent rebuild from the paper text, CPU only</p>
 <div class="card"><b>Summary.</b> {n_pass} of {len(rows)} checks reproduced outright and {n_part} partly. The exact numbers printed in the paper
 match to every digit, the 1/λ grokking boundary lands within {abs(A_ratio - 1) * 100:.1f}% of the paper's constant, and grokking time
-scales with 1/(learning rate × weight decay) with log-log slope {fmt(tl.get('slope_s10'))}. Nuances: Fourier structure in the NTK
+scales with 1/(learning rate × weight decay) with log-log slope {fmt(tl.get('bulk_slope_s50'))} away from the phase boundaries
+(but {fmt(tl.get('slope_s10'))} if every grokking run is pooled, because runs near the boundaries slow down). Nuances: Fourier structure in the NTK
 mostly forms before the training set is fully fit; the ridge-residual formula is approximate for ReLU networks because SGD never
 reaches a stationary point; and the weight-decay dependence is weaker than proportional across seeds.</div>
 <h2>Claims vs results</h2><div class="tw"><table><tr><th>ID</th><th>Claim</th><th>Paper</th><th>Ours</th><th>Verdict</th><th>Notes</th></tr>{table}</table></div>
