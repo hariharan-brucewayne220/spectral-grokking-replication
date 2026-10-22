@@ -10,13 +10,13 @@ What I found:
 • The exact numbers printed in the paper reproduced to the digit. Their example run first hits 90% held-out accuracy at step 8,300. Mine: 8,300.
 • Across {N_RUNS} networks, the boundary between "memorizes" and "groks" follows learning rate = A / weight decay, with A within {A_PCT}% of the paper's value.
 • Grokking time vs 1/(learning rate × weight decay) has a log-log slope of {SLOPE} (theory: 1).
-• Not everything held up cleanly. Learning rate and weight decay don't act symmetrically: raising the learning rate speeds grokking exactly as predicted, while doubling weight decay gives only ~1.5x. And a formula the paper proves for the leftover error is exact for a smooth network but only ~75% accurate for the ReLU networks actually used, because gradient descent never fully settles.
+• Not everything held up cleanly. Learning rate and weight decay don't act symmetrically: raising the learning rate speeds grokking exactly as predicted, while doubling weight decay gives only ~1.5x. And a formula the paper proves for the leftover error matches to 7 digits on a smooth network, but is off by ~25% on the ReLU networks actually used, because gradient descent never fully settles there.
 
 Three things I'd tell anyone attempting a replication:
 1. Match the printed numbers before testing the big claims. If you can't hit 8,300, nothing downstream means anything.
 2. Test your metrics on a case where the answer should be zero. Two of mine were quietly measuring the diagonal of a matrix instead of the structure I cared about.
 3. Report what didn't reproduce. The partial results taught me more than the clean ones.
 
-Code, tests, figures and a full write-up: {REPO_URL}
+Code, tests, figures and a full write-up: https://github.com/hariharan-brucewayne220/spectral-grokking-replication
 
 #MachineLearning #DeepLearning #Research #Reproducibility
