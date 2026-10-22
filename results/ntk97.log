@@ -1,0 +1,8 @@
+step      0 train 0.009 test 0.010 circulant 1.000 top-4 eigvec Fourier peak [0.1, 0.08, 0.12, 0.08] (2s)
+step    100 train 0.085 test 0.003 circulant 1.000 top-4 eigvec Fourier peak [0.1, 0.07, 0.06, 0.08] (4s)
+step    500 train 0.713 test 0.000 circulant 1.000 top-4 eigvec Fourier peak [0.32, 0.17, 0.07, 0.09] (9s)
+step   1000 train 0.893 test 0.000 circulant 1.000 top-4 eigvec Fourier peak [0.88, 0.87, 0.15, 0.19] (16s)
+step   3000 train 0.949 test 0.000 circulant 1.000 top-4 eigvec Fourier peak [0.93, 0.9, 0.58, 0.73] (36s)
+step   6000 train 0.995 test 0.043 circulant 1.000 top-4 eigvec Fourier peak [0.78, 0.94, 0.92, 0.88] (65s)
+step   8000 train 1.000 test 0.449 circulant 1.000 top-4 eigvec Fourier peak [0.46, 0.97, 0.91, 0.96] (86s)
+step  10000 train 1.000 test 0.822 circulant 1.000 top-4 eigvec Fourier peak [0.38, 0.96, 0.94, 0.96] (106s)

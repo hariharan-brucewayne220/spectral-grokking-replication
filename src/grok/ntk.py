@@ -46,18 +46,32 @@ def label_kernel(K_tl, y, p):
 
 
 def circulant_fraction(K):
-    """Share of K's off-mean variance explained by its best circulant fit.
+    """Share of the off-diagonal variance of K explained by its best circulant fit.
 
     A kernel that depends only on (c - c') mod p is circulant; that is the
-    Fourier structure modular addition should induce. 1.0 = perfectly circulant.
+    Fourier structure modular addition should induce. The diagonal is excluded:
+    after diagonal normalization it is all ones, and "ones on the diagonal plus a
+    constant elsewhere" is trivially circulant. 1.0 = perfectly circulant,
+    0.0 = no off-diagonal variation or none of it circulant.
     """
     K = np.asarray(K, float)
     p = K.shape[0]
     idx = (np.arange(p)[None, :] - np.arange(p)[:, None]) % p
+    off = idx != 0
     diag_means = np.array([K[idx == k].mean() for k in range(p)])
     C = diag_means[idx]
-    total = np.sum((K - K.mean()) ** 2)
-    return float(1 - np.sum((K - C) ** 2) / total)
+    total = np.sum((K[off] - K[off].mean()) ** 2)
+    if total < 1e-12 * max(1.0, np.sum(K[off] ** 2)):
+        return 0.0
+    return float(1 - np.sum((K[off] - C[off]) ** 2) / total)
+
+
+def circulant_amplitude(K):
+    """Std of the circulant (Fourier) part of K over off-diagonal offsets: how strong the structure is."""
+    K = np.asarray(K, float)
+    p = K.shape[0]
+    idx = (np.arange(p)[None, :] - np.arange(p)[:, None]) % p
+    return float(np.std([K[idx == k].mean() for k in range(1, p)]))
 
 
 def fourier_peak(v):

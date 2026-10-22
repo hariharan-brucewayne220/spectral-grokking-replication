@@ -1,0 +1,42 @@
+{
+  "memorization": {
+    "lr": 0.87048,
+    "wd": 3.293e-05,
+    "paper": "memorization",
+    "phase": "memorization",
+    "first_test_90": null,
+    "peak_train": 1.0,
+    "final_train": 1.0,
+    "final_test": 0.04968944191932678
+  },
+  "grokking": {
+    "lr": 2.36316,
+    "wd": 0.000118329,
+    "paper": "grokking; first 90% held-out at update 8,300",
+    "phase": "grokking",
+    "first_test_90": 8300,
+    "peak_train": 1.0,
+    "final_train": 1.0,
+    "final_test": 1.0
+  },
+  "forgetting": {
+    "lr": 1.43426,
+    "wd": 0.00124846,
+    "paper": "forgetting; peak train acc 0.948, final 0.204",
+    "phase": "forgetting",
+    "first_test_90": null,
+    "peak_train": 0.948369562625885,
+    "final_train": 0.20380434393882751,
+    "final_test": 0.0
+  },
+  "no fitting": {
+    "lr": 28.6967,
+    "wd": 0.000189561,
+    "paper": "no fitting",
+    "phase": "no fitting",
+    "first_test_90": null,
+    "peak_train": 0.04619565233588219,
+    "final_train": 0.04619565233588219,
+    "final_test": 0.03105590119957924
+  }
+}

@@ -50,5 +50,9 @@ def test_circulant_fraction_and_fourier_peak():
     rng = np.random.default_rng(0)
     R = rng.normal(size=(p, p)); R = R + R.T
     assert circulant_fraction(R) < 0.3
+    # identity plus a constant is trivially circulant; it must not count as structure
+    assert circulant_fraction(0.3 * np.ones((p, p)) + 0.7 * np.eye(p)) == 0.0
+    noisy = 0.3 + 0.7 * np.eye(p) + 0.01 * R
+    assert circulant_fraction(noisy) < 0.3
     frac, k = fourier_peak(np.cos(2 * np.pi * 5 * np.arange(p) / p))
     assert k == 5 and frac > 0.99
