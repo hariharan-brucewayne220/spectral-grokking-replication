@@ -31,7 +31,7 @@ See [`docs/report.html`](docs/report.html) for the full table and figures. Every
 ```bash
 python -m venv .venv && .venv/bin/pip install torch numpy matplotlib scipy pytest
 .venv/bin/python -m pytest -q                                    # 18 tests
-PYTHONPATH=src .venv/bin/python -m grok.sweep --stride 2 --workers 3   # ~4 h on 3 cores, resumable
+PYTHONPATH=src .venv/bin/python -m grok.sweep --stride 2 --workers 3   # ~6 h on 3 cores, resumable
 .venv/bin/python scripts/reference_runs.py                       # Fig. 7 cells, ~2 min
 .venv/bin/python scripts/ntk_mod97.py                            # Fig. 2, ~4 min
 .venv/bin/python scripts/ridge_check.py                          # Theorem 1, ~15 min

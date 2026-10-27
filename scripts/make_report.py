@@ -200,7 +200,7 @@ reaches a stationary point; and the weight-decay dependence is weaker than propo
 <h2>Figures</h2>{fig_html}
 <h2>Setup</h2><p>Mod-23 addition, 368/161 difference split, bias-free 46→256→23 ReLU MLP (He-normal, seed 0), full-batch SGD with coupled
 weight decay, MSE on logits, 24,000 updates. Sweep: every second point of the paper's 84 learning rates (0.1 to 100) × 90 weight decays
-(5e-6 to 2e-3), {sum(pc.values()):,} networks, ~4 h on 3 CPU cores. NTK diagnostic: mod 97, 2,376/2,377 split, η 40, λ 2.5e-5, 20,000 updates.
+(5e-6 to 2e-3), {sum(pc.values()):,} networks, about 6 h (355 min) on 3 CPU cores. NTK diagnostic: mod 97, 2,376/2,377 split, η 40, λ 2.5e-5, 20,000 updates.
 Code, tests (18 passing) and raw results are in the repository.</p>
 <h2>Not attempted</h2><p>The Transformer sweep (Fig. 4) and the NTK-alignment intervention (Fig. 6, 40 paired seeds) were left out
 to keep the run inside a CPU budget.</p>

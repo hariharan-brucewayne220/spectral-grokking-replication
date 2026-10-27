@@ -1,0 +1,460 @@
+<title>Rebuilding the Grokking Paper</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a lab notebook. A sticky index of lessons with progress on the left, one long ruled column of lessons on the right; the index folds above the lessons on phones. */
+:root{
+  --page:#f4f6f3; --sheet:#ffffff; --ink:#17201c; --ink-2:#56615b; --rule:#dce2dc;
+  --teal:#0f766e; --teal-soft:#e1f1ee; --amber:#a3530a; --amber-soft:#fcf1e2; --code:#eef1ec;
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --page:#111513; --sheet:#181e1b; --ink:#e7ede9; --ink-2:#a2aca6; --rule:#29322e;
+  --teal:#52c2b1; --teal-soft:#16302b; --amber:#efa04a; --amber-soft:#2d2317; --code:#1f2723; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#111513; --sheet:#181e1b; --ink:#e7ede9; --ink-2:#a2aca6; --rule:#29322e;
+  --teal:#52c2b1; --teal-soft:#16302b; --amber:#efa04a; --amber-soft:#2d2317; --code:#1f2723; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font:17.5px/1.65 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.shell{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:260px minmax(0,1fr);gap:40px;padding-block:28px 80px}
+@media (max-width:900px){.shell{grid-template-columns:minmax(0,1fr);gap:24px}}
+h1,h2,h3,.ui{font-family:var(--f-display)}
+h1{font-size:clamp(2rem,4.6vw,3.1rem);line-height:1.08;font-weight:700;margin:0;text-wrap:balance;letter-spacing:-.015em}
+h2{font-size:clamp(1.4rem,2.6vw,1.85rem);line-height:1.2;font-weight:700;margin:0;text-wrap:balance}
+h3{font-size:.8rem;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2);margin:22px 0 6px}
+p{margin:0 0 12px;max-width:66ch}
+ul,ol{margin:0 0 12px;padding-left:22px;max-width:64ch}
+li{margin:3px 0}
+a{color:var(--teal)}
+code{font:.84em var(--f-mono);background:var(--code);border-radius:4px;padding:1px 5px}
+:focus-visible{outline:3px solid var(--teal);outline-offset:2px;border-radius:4px}
+
+/* index */
+nav.index{position:sticky;top:max(20px,env(safe-area-inset-top,0px));align-self:start;font-family:var(--f-display);font-size:.9rem;max-height:calc(100vh - 40px);overflow:auto}
+@media (max-width:900px){nav.index{position:static;max-height:none;background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:14px}}
+.prog{display:flex;align-items:center;gap:10px;margin:0 0 12px}
+.bar{flex:1;height:8px;background:var(--rule);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--teal);transition:width .3s}
+nav.index ol{list-style:none;padding:0;margin:0;max-width:none}
+nav.index li{margin:0}
+nav.index a{display:grid;grid-template-columns:26px minmax(0,1fr);gap:6px;padding:5px 6px;border-radius:6px;color:var(--ink-2);text-decoration:none;line-height:1.3}
+nav.index a:hover{background:var(--sheet);color:var(--ink)}
+nav.index a .n{font-family:var(--f-mono);font-size:.78rem;padding-top:1px}
+nav.index a.done{color:var(--teal)}
+nav.index a.done .n::before{content:"✓"}
+nav.index a.done .n span{display:none}
+
+/* intro */
+.intro{display:flex;flex-direction:column;gap:14px;margin-bottom:26px}
+.kicker{font:500 .8rem var(--f-mono);letter-spacing:.06em;color:var(--teal)}
+.pipeline{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:6px 0 4px;font:600 .82rem var(--f-display)}
+.pipeline span{background:var(--sheet);border:1px solid var(--rule);border-radius:99px;padding:3px 11px}
+.pipeline b{color:var(--ink-2);font-weight:400}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:6px}
+.facts div{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:10px 12px}
+.facts b{display:block;font:700 1.35rem/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.facts span{font-size:.85rem;color:var(--ink-2)}
+
+/* lessons */
+article.lesson{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;padding:24px 26px;margin:0 0 22px;scroll-margin-top:20px;min-width:0}
+@media (max-width:600px){article.lesson{padding:18px 16px}}
+.lhead{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;align-items:baseline;margin-bottom:10px}
+.lnum{font:700 2.2rem/1 var(--f-display);color:var(--teal);font-variant-numeric:tabular-nums}
+.ltag{grid-column:2;font:500 .78rem var(--f-mono);color:var(--ink-2)}
+pre{background:var(--code);border-radius:8px;padding:12px 14px;overflow-x:auto;font:.8rem/1.55 var(--f-mono);margin:6px 0 14px;max-width:100%}
+.gotcha{background:var(--amber-soft);border-left:4px solid var(--amber);border-radius:0 8px 8px 0;padding:10px 14px;margin:10px 0 14px}
+.gotcha .ui{font-weight:600;color:var(--amber);font-size:.85rem;letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:2px}
+.take{background:var(--teal-soft);border-radius:8px;padding:10px 14px;margin:14px 0 12px}
+.take .ui{font-weight:600;color:var(--teal);font-size:.85rem;letter-spacing:.04em;text-transform:uppercase;display:block;margin-bottom:2px}
+.take p:last-child,.gotcha p:last-child{margin-bottom:0}
+.try{display:flex;gap:8px;align-items:stretch;margin:6px 0 12px;min-width:0}
+.try pre{flex:1;margin:0;min-width:0}
+.try button{font:600 .8rem var(--f-display);background:var(--sheet);color:var(--ink);border:1px solid var(--rule);border-radius:8px;padding:0 12px;cursor:pointer;flex:none}
+.try button:hover{border-color:var(--teal);color:var(--teal)}
+details.quiz{border:1px dashed var(--rule);border-radius:8px;padding:8px 12px;margin:8px 0}
+details.quiz summary{cursor:pointer;font:600 .95rem var(--f-display)}
+details.quiz div{padding-top:8px}
+.donebox{display:flex;align-items:center;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid var(--rule);font:600 .9rem var(--f-display);color:var(--ink-2);cursor:pointer;width:max-content}
+.donebox input{width:18px;height:18px;accent-color:var(--teal)}
+.tw{overflow-x:auto;margin:6px 0 14px}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{border-bottom:1px solid var(--rule);padding:7px 8px;text-align:left;vertical-align:top}
+th{font:600 .8rem var(--f-display);color:var(--ink-2)}
+td.num{font-family:var(--f-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.eq{font:.86rem var(--f-mono);background:var(--code);border-radius:6px;padding:8px 12px;overflow-x:auto;white-space:nowrap;margin:6px 0 12px}
+footer{color:var(--ink-2);font-size:.9rem;padding-top:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="shell">
+<nav class="index" aria-label="Lessons">
+  <div class="prog"><div class="bar"><i id="barFill"></i></div><span class="ui" id="progTxt">0 / 17</span></div>
+  <ol id="toc"></ol>
+</nav>
+
+<main>
+<header class="intro">
+  <span class="kicker">YOUR PROJECT, LESSON BY LESSON</span>
+  <h1>Rebuilding the grokking paper</h1>
+  <p>This walks through everything we did to replicate <i>A Spectral Theory of Grokking</i> (Pracher, de Jong, Lieshaus, Jeffares, Rulands; arXiv 2609.26679, September 2026) on a 4-core cloud machine with no GPU. The lessons follow the real order of the work, including the mistakes. Tick each one off as you finish it.</p>
+  <div class="pipeline" aria-label="Project pipeline">
+    <span>Pick paper</span><b>→</b><span>Read &amp; list claims</span><b>→</b><span>Probe one run</span><b>→</b><span>Build + test</span><b>→</b><span>Match printed numbers</span><b>→</b><span>Sweep 1,890 nets</span><b>→</b><span>Deeper checks</span><b>→</b><span>Write up</span>
+  </div>
+  <div class="facts">
+    <div><b>1,890</b><span>networks trained</span></div>
+    <div><b>355 min</b><span>sweep time on 3 cores</span></div>
+    <div><b>18</b><span>automated tests</span></div>
+    <div><b>8,300</b><span>paper's number, matched exactly</span></div>
+  </div>
+</header>
+
+<!-- 1 -->
+<article class="lesson" id="pick" data-title="Pick a paper the machine can run">
+  <div class="lhead"><span class="lnum">1</span><h2>Pick a paper the machine can actually run</h2><span class="ltag">firecrawl research search · web search · hardware check</span></div>
+  <h3>What we did</h3>
+  <p>Before searching, we checked the machine: <code>nproc</code> gave 4 CPUs, <code>free -h</code> gave 15 GB of RAM, and <code>nvidia-smi</code> didn't exist, so no GPU. That one fact decided everything else.</p>
+  <p>Then we searched recent papers (September and October 2026) with three framings: optimizer tricks on tiny transformers, training-free methods on small LLMs, and grokking or interpretability on synthetic tasks. Several framings find different papers than one query does.</p>
+  <div class="tw"><table>
+    <tr><th>Candidate</th><th>Why we passed</th></tr>
+    <tr><td>Misalignment of Low-Loss Regions Causes Grokking (2610.00620)</td><td>One run is ~25 min on an RTX 5090 (150,000 epochs). Hopeless on CPU.</td></tr>
+    <tr><td>Spectrally Targeted Muon (2610.10965)</td><td>CIFAR-10 and NanoGPT speedruns: GPU work.</td></tr>
+    <tr><td>Step Law below 59M params (2609.27581)</td><td>935 TinyStories runs.</td></tr>
+    <tr><td>Sparse Transformer testbed (2610.19907)</td><td>Needs an LLM API for AutoInterp.</td></tr>
+    <tr><td><b>A Spectral Theory of Grokking (2609.26679)</b></td><td><b>Chosen.</b> Core experiment: a one-hidden-layer MLP on 529 examples. Clear, falsifiable prediction. No public code yet.</td></tr>
+  </table></div>
+  <div class="take"><span class="ui">Takeaway</span><p>Match the paper to your compute first, then to your interests. A good replication target has small experiments, a sharp quantitative claim, and exact settings in the appendix. Missing official code is a bonus: an independent rebuild is a stronger story.</p></div>
+  <details class="quiz"><summary>Check yourself: why does "no code released" make this a better project, not a worse one?</summary><div>Because a rebuild from text tests whether the paper is fully specified, and matching their numbers proves you understood it. Re-running someone's repo only proves the repo runs.</div></details>
+</article>
+
+<!-- 2 -->
+<article class="lesson" id="read" data-title="Read the paper and list the claims">
+  <div class="lhead"><span class="lnum">2</span><h2>Read the whole paper and turn it into a claim list</h2><span class="ltag">paper/spectral_grokking_2609.26679.md · docs/replication_plan.html</span></div>
+  <h3>What we did</h3>
+  <p>arxiv.org was blocked by this environment's network policy, so we pulled the paper's HTML through Firecrawl's scraper and saved it as markdown. We read the main text <i>and every appendix</i>, because Appendix G is where the reproducible details live: the split, the network, the optimizer, the grid, the phase rules.</p>
+  <p>From that we wrote a numbered claim list before writing any code:</p>
+  <ul>
+    <li><b>C0/C1</b>: four specific runs (Fig. 7), including two numbers printed to the digit: first 90% held-out at update <b>8,300</b>, and a forgetting run peaking at <b>0.948</b> and ending at <b>0.204</b>.</li>
+    <li><b>C2/C3</b>: a phase map with four outcomes, and a boundary that follows η = A/λ with A ≈ 1.09e-4.</li>
+    <li><b>C4</b>: grokking time scales as 1/(ηλ).</li>
+    <li><b>C5</b>: the network's NTK grows Fourier structure after the training set is fit.</li>
+    <li><b>C6</b>: Theorem 1, the leftover error has a ridge-regression form.</li>
+  </ul>
+  <div class="take"><span class="ui">Takeaway</span><p>Read appendices first when replicating. Write the claims down with the paper's own numbers next to them, so "success" is defined before you see any results.</p></div>
+  <details class="quiz"><summary>Check yourself: which claims are "hard numbers" and which are "shapes"?</summary><div>C0/C1 are hard numbers you can match exactly. C3 has a fitted constant. C2, C4, C5 are shapes or trends. Hard numbers are your calibration: if they don't match, nothing downstream means anything.</div></details>
+</article>
+
+<!-- 3 -->
+<article class="lesson" id="probe" data-title="Run one cell first">
+  <div class="lhead"><span class="lnum">3</span><h2>Run one cell before building anything</h2><span class="ltag">src/probe_single_cell.py</span></div>
+  <h3>What we did</h3>
+  <p>One 60-line script: build the mod-23 data, the MLP, plain PyTorch SGD, and train the paper's grokking cell (η = 2.36316, λ = 1.18329e-4) for 24,000 steps. Result: first 90% held-out accuracy at <b>update 8,300</b>, exactly the paper's number, in <b>22.7 seconds</b> on one core.</p>
+  <p>That single run gave us two things: confidence that we read the setup correctly, and a time budget. 7,560 runs (the full paper grid) × 21 s ÷ 4 cores ≈ 11 hours. Every second grid point (1,890 runs) on 3 workers ≈ 3 to 4 hours in theory.</p>
+  <div class="try"><pre>.venv/bin/python src/probe_single_cell.py 2.36316 1.18329e-4 24000</pre><button type="button" data-copy>Copy</button></div>
+  <div class="take"><span class="ui">Takeaway</span><p>Do the smallest end-to-end run first. It checks your understanding and gives you real timing for planning, which beats any estimate.</p></div>
+  <details class="quiz"><summary>Check yourself: our estimate said ~3 hours for the sweep. It took 355 minutes. Why?</summary><div>I first guessed "other jobs shared the CPU". The log said otherwise: chunks with the largest learning rates (η ≈ 34 to 100) took ~800 s instead of ~150 s, at every weight decay. Lesson 8 explains why (denormal numbers). Check the log before explaining a slowdown.</div></details>
+</article>
+
+<!-- 4 -->
+<article class="lesson" id="ideas" data-title="The ideas you need">
+  <div class="lhead"><span class="lnum">4</span><h2>The ideas you need</h2><span class="ltag">concepts</span></div>
+  <h3>The task</h3>
+  <p>(a + b) mod 23 for all 529 pairs. Inputs are two one-hot vectors glued together (46 numbers). A pair is for training if (a − b) mod 23 is in a fixed set of 16 values: 368 train, 161 held out. That split doesn't change if you add the same number to a and b, which keeps the cyclic symmetry clean.</p>
+  <h3>Training</h3>
+  <p>MSE between the 23 outputs and a one-hot target, averaged over all 368 × 23 numbers. Full-batch SGD (all examples every step, so no noise). Coupled weight decay means each update is <code>w ← w − η(∇L + λw)</code>, which is PyTorch's <code>SGD(weight_decay=λ)</code>.</p>
+  <h3>Homogeneity</h3>
+  <p>The network has no biases: f(x) = W2ᵀ relu(W1ᵀx). Scale every weight by c and the output scales by c². Differentiating that gives Euler's identity <code>J·θ = 2f</code>. This is what lets weight decay be written in terms of outputs, so the math closes.</p>
+  <h3>The NTK</h3>
+  <p>J is the Jacobian of all outputs with respect to all weights. The neural tangent kernel K = J Jᵀ says how a gradient step on one output moves every other output. If K stays fixed, the network acts like a kernel machine ("lazy"). If K changes, it is learning features ("rich").</p>
+  <h3>The paper's argument in four lines</h3>
+  <div class="eq">1. Weight decay leaves a residual:  σ* = −c (K + cI)⁻¹ y   (weak NTK directions keep more error)</div>
+  <div class="eq">2. That residual changes the kernel:  dK/dt = −K⁽²⁾σ − 2λ̃K</div>
+  <div class="eq">3. Along one Fourier direction, the strength Λ grows to a stable fixed point Λ* &gt; 0</div>
+  <div class="eq">4. The slow clock is τ = η·λ·steps  →  grokking time ∝ 1/(ηλ)</div>
+  <div class="take"><span class="ui">Takeaway</span><p>You only need three tools to follow the theory: the residual, the NTK, and homogeneity. The long version is in <code>docs/teaching_guide.html</code>.</p></div>
+  <details class="quiz"><summary>Check yourself: why must the network have no biases?</summary><div>A bias doesn't scale with the other weights, so f(cθ) = c²f(θ) breaks, and so does Jθ = 2f. Without that identity, the weight-decay term can't be rewritten in output space.</div></details>
+</article>
+
+<!-- 5 -->
+<article class="lesson" id="build" data-title="Build the data and the model">
+  <div class="lhead"><span class="lnum">5</span><h2>Build the data and the model</h2><span class="ltag">src/grok/data.py · src/grok/model.py</span></div>
+  <h3>The split, in five lines</h3>
+<pre>def difference_split(p: int = 23, diffs=PAPER_DIFFS_23) -&gt; ModAddData:
+    a, b = torch.meshgrid(torch.arange(p), torch.arange(p), indexing="ij")
+    a, b = a.reshape(-1), b.reshape(-1)
+    diffs = torch.tensor(sorted(diffs))
+    train = torch.isin((a - b) % p, diffs)
+    return ModAddData(p, a, b, (a + b) % p, train)</pre>
+  <h3>The model</h3>
+  <p><code>make_mlp</code> builds a bias-free 46 → 256 → 23 ReLU network with He-normal init after <code>torch.manual_seed(seed)</code>. <code>init_weights</code> builds the same network and returns its weights as plain tensors, so every trainer starts from bit-identical weights. That is how the batched trainer could also hit 8,300.</p>
+  <p>We also built the mod-97 split from Appendix G.1: the 4,753 unordered pairs, shuffled by NumPy seed 0, first 2,376 for training.</p>
+  <div class="take"><span class="ui">Takeaway</span><p>When two pieces of code must agree, make them share one source of truth (here, one init function), not two copies that are "the same".</p></div>
+  <details class="quiz"><summary>Check yourself: 46·256 + 256·23 = ?</summary><div>11,776 + 5,888 = 17,664 parameters. A test checks this number.</div></details>
+</article>
+
+<!-- 6 -->
+<article class="lesson" id="trainers" data-title="Two trainers that check each other">
+  <div class="lhead"><span class="lnum">6</span><h2>Two trainers that check each other</h2><span class="ltag">src/grok/train.py</span></div>
+  <h3>What we did</h3>
+  <p><code>train_reference</code> is the plain PyTorch loop: <code>nn.Module</code>, autograd, <code>torch.optim.SGD</code>. It is slow but obviously right.</p>
+  <p><code>train_batched</code> trains many (η, λ) settings at once with hand-written gradients. The trick: inputs are one-hot, so the first layer is just a lookup, <code>h = W1[a] + W1[23 + b]</code>, and its gradient is a scatter-add.</p>
+<pre>pre = W1[:, a_tr] + W1[:, b_tr]  # [G, n, width]
+h = torch.relu(pre)
+dF = (h @ W2 - Y) * scale  # [G, n, p]
+gW2 = h.transpose(1, 2) @ dF  # [G, width, p]
+dpre = (dF @ W2.transpose(1, 2)) * (pre &gt; 0)
+gW1 = torch.zeros_like(W1)
+gW1.index_add_(1, a_tr, dpre)
+gW1.index_add_(1, b_tr, dpre)
+# PyTorch SGD with coupled decay: w &lt;- w - lr * (g + wd * w)
+W1.sub_(lrs * (gW1 + wds * W1))
+W2.sub_(lrs * (gW2 + wds * W2))</pre>
+  <p><code>scale = 2/(n·p)</code> is the derivative of the mean squared error. Tests check both trainers produce the same curves, and that a run's result doesn't depend on which other settings share its batch.</p>
+  <div class="take"><span class="ui">Takeaway</span><p>When you write a faster version of something, keep the slow obvious version and test one against the other. Every later result rests on that test.</p></div>
+  <details class="quiz"><summary>Check yourself: why does <code>(pre &gt; 0)</code> appear in the backward pass?</summary><div>It is the derivative of ReLU: gradient flows only through units that were active. That 0/1 mask is also the source of the "kinks" that matter in lesson 14.</div></details>
+</article>
+
+<!-- 7 -->
+<article class="lesson" id="tests" data-title="Test the math the theory uses">
+  <div class="lhead"><span class="lnum">7</span><h2>Test the math the theory depends on</h2><span class="ltag">tests/test_core.py · tests/test_ntk.py · 18 tests</span></div>
+  <h3>What the tests guard</h3>
+  <ul>
+    <li><b>Data</b>: 368/161 split, labels are (a+b) mod 23, split unchanged by shifting both numbers.</li>
+    <li><b>Model</b>: no biases, 17,664 parameters.</li>
+    <li><b>Homogeneity</b>: f(cθ) = c²f(θ) for c = 0.5, 1.7, 3.0, and the Euler identity Jθ = 2f, in float64.</li>
+    <li><b>Trainers</b>: batched equals reference at three settings; batched runs independent; deterministic.</li>
+    <li><b>Analysis</b>: phase rules on hand-made curves; a synthetic η = A/λ boundary is recovered.</li>
+    <li><b>NTK</b>: closed-form kernels equal autograd's J Jᵀ; metric sanity cases (lesson 13).</li>
+  </ul>
+<pre>_, j_theta = jvp(f, (params,), (params,))   # J·θ without building J
+torch.testing.assert_close(j_theta, 2 * base)</pre>
+  <div class="try"><pre>.venv/bin/python -m pytest -q</pre><button type="button" data-copy>Copy</button></div>
+  <div class="take"><span class="ui">Takeaway</span><p>Test the properties the theory assumes, not only the code paths. If homogeneity silently broke (say someone adds a bias), every later conclusion would be invalid, and this test catches it.</p></div>
+  <details class="quiz"><summary>Check yourself: what does <code>jvp(f, (params,), (params,))</code> compute?</summary><div>A Jacobian-vector product: the derivative of f in the direction θ itself, which is J·θ. It never builds the full Jacobian, so it's cheap.</div></details>
+</article>
+
+<!-- 8 -->
+<article class="lesson" id="sweep" data-title="A fast, crash-proof sweep">
+  <div class="lhead"><span class="lnum">8</span><h2>Make the sweep fast and crash-proof</h2><span class="ltag">src/grok/sweep.py</span></div>
+  <h3>Measure before optimizing</h3>
+  <p>We assumed batching many networks per process would be fastest. Benchmarks said otherwise: one model on one thread took 21 s; 32 models on 4 threads cost about 37 core-seconds each. The matrices (368 × 256 × 23) are too small to use multiple threads well. So: <b>one single-threaded process per core</b>, 3 workers, one core left free for other work.</p>
+  <h3>Use the paper's exact grid</h3>
+  <p>The paper's grid is 84 learning rates (0.1 to 100) × 90 weight decays (5e-6 to 2e-3), log-spaced. We took every second point: 42 × 45 = 1,890 runs. Each of our cells sits exactly on one of theirs, so any cell can be compared directly.</p>
+  <h3>Crash-proofing</h3>
+<pre>tmp = path.with_suffix(".tmp.npz")
+np.savez_compressed(tmp, lr_idx=lr_idx, wd_idx=wd_idx, ...)
+os.replace(tmp, path)   # atomic: a file is either complete or absent</pre>
+  <p>Runs are grouped into 270 chunks of 7. A finished chunk is a file; on restart, existing files are skipped. A crash loses at most one chunk, never a half-written file.</p>
+  <div class="gotcha"><span class="ui">What went wrong: denormal numbers</span><p>The sweep took 355 minutes, not the ~3.5 hours planned. The slow chunks were all at very large learning rates. There the network "dies" (every ReLU switches off), so the only force left is weight decay, shrinking every weight by (1 − ηλ) each step. Around step 10,000 the weights drop below 1.2e-38, into <i>denormal</i> floating-point range, which CPUs process very slowly: the last 4,000-step segments ran at half speed in a plain loop, and those chunks took ~800 s instead of ~150 s. One line at the top of each worker, <code>torch.set_flush_denormal(True)</code>, would have avoided it.</p></div>
+  <div class="try"><pre>PYTHONPATH=src .venv/bin/python -m grok.sweep --out results/mlp23 --stride 2 --workers 3</pre><button type="button" data-copy>Copy</button></div>
+  <div class="take"><span class="ui">Takeaway</span><p>Long jobs must be resumable and must write atomically. The cloud container can be reclaimed at any time.</p></div>
+  <details class="quiz"><summary>Check yourself: why write to a temp file and then rename?</summary><div>A rename is atomic on the same filesystem. If the process dies mid-write, only the .tmp file is broken, and the resume logic never mistakes a partial file for a finished chunk.</div></details>
+</article>
+
+<!-- 9 -->
+<article class="lesson" id="match" data-title="Match the printed numbers">
+  <div class="lhead"><span class="lnum">9</span><h2>Match the paper's printed numbers</h2><span class="ltag">scripts/reference_runs.py · figures/fig7_reference_cells.png</span></div>
+  <p>We ran the four Fig. 7 cells with the plain trainer, independent of the sweep code.</p>
+  <div class="tw"><table>
+    <tr><th>Cell (η, λ)</th><th>Paper</th><th>Ours</th></tr>
+    <tr><td>Grokking (2.36316, 1.18329e-4)</td><td class="num">90% at 8,300</td><td class="num">8,300</td></tr>
+    <tr><td>Forgetting (1.43426, 1.24846e-3)</td><td class="num">peak 0.948, final 0.204</td><td class="num">0.948, 0.204</td></tr>
+    <tr><td>Memorization (0.87048, 3.293e-5)</td><td class="num">memorization</td><td class="num">memorization</td></tr>
+    <tr><td>No fitting (28.6967, 1.89561e-4)</td><td class="num">no fitting</td><td class="num">no fitting</td></tr>
+  </table></div>
+  <p>0.948 is 349 of 368 training examples. Hitting that exactly means our init, split, loss scaling and decay convention all match theirs.</p>
+  <div class="try"><pre>.venv/bin/python scripts/reference_runs.py</pre><button type="button" data-copy>Copy</button></div>
+  <div class="take"><span class="ui">Takeaway</span><p>Calibrate on exact numbers before testing big claims. It turns "I think I followed the paper" into evidence.</p></div>
+  <details class="quiz"><summary>Check yourself: a test fails to match 8,300 and gives 8,600 instead. Name three likely causes.</summary><div>Different initialization (seed, He variant, or init order), a different loss scaling (sum vs mean), or a different weight-decay convention (decoupled AdamW-style vs coupled). Also a different split.</div></details>
+</article>
+
+<!-- 10 -->
+<article class="lesson" id="phase" data-title="Phase map and the 1/λ boundary">
+  <div class="lhead"><span class="lnum">10</span><h2>The phase map and the 1/λ boundary</h2><span class="ltag">src/grok/analysis.py · figures/fig3a_phase_map.png</span></div>
+  <h3>Labeling each run</h3>
+<pre>def classify(train_acc, test_acc, thr=0.9):
+    if tr[-1] &gt; thr and te[-1] &gt; thr: return GROK
+    if tr[-1] &gt; thr:                  return MEMORIZE
+    if (tr &gt; thr).any():              return FORGET
+    return NOFIT</pre>
+  <h3>Finding and fitting the boundary</h3>
+  <p>For each weight-decay column, the boundary is the geometric midpoint between the last "memorized" learning rate and the first "grokked" one. Then we fit η = A/λ with the slope fixed at −1 (log A is just the mean of log η + log λ), plus a free-slope fit as a diagnostic.</p>
+  <div class="tw"><table>
+    <tr><th>Quantity</th><th>Paper</th><th>Ours</th></tr>
+    <tr><td>A in η = A/λ</td><td class="num">1.092e-4</td><td class="num">1.057e-4 (3% off)</td></tr>
+    <tr><td>Fit quality, log-RMSE</td><td class="num">0.120</td><td class="num">0.110</td></tr>
+    <tr><td>Free log-log slope</td><td class="num">−1.17</td><td class="num">−1.13</td></tr>
+    <tr><td>Highest λ that still groks</td><td class="num">≈ 7.0e-4</td><td class="num">7.29e-4</td></tr>
+    <tr><td>Forgetting starts at λ</td><td class="num">≈ 8.38e-4</td><td class="num">8.34e-4</td></tr>
+    <tr><td>Instability edge (low λ)</td><td class="num">η ≈ 18.9</td><td class="num">η ≈ 20.6</td></tr>
+  </table></div>
+  <p>Outcome counts: 472 grokking, 798 memorization, 116 forgetting, 504 no fitting. We even see the paper's "detached high-learning-rate island" around η ≈ 30 to 50.</p>
+  <div class="gotcha"><span class="ui">What went wrong</span><p>My first "fit fails at λ = …" metric printed 5e-6, the smallest decay on the grid. It counted unstable high-η runs as fit failures. Redefined as "lowest λ where forgetting appears", it gave 8.34e-4 against the paper's 8.38e-4.</p></div>
+  <div class="take"><span class="ui">Takeaway</span><p>When a metric returns the edge of your grid, suspect the metric before the science.</p></div>
+  <details class="quiz"><summary>Check yourself: why a geometric midpoint, not an arithmetic one?</summary><div>The grid is log-spaced, so the natural midpoint is the midpoint in log space: √(η₁·η₂).</div></details>
+</article>
+
+<!-- 11 -->
+<article class="lesson" id="timing" data-title="When more data changed the answer">
+  <div class="lhead"><span class="lnum">11</span><h2>The timing law: when more data changed the answer</h2><span class="ltag">figures/fig3b_timing_law.png</span></div>
+  <h3>What happened</h3>
+  <p>Halfway through the sweep (the low-decay half), grokking time vs 1/(ηλ) had a log-log slope of 0.96, R² 0.94. It looked like a clean win. With all 1,890 runs, pooling every grokking run gave <b>0.59</b>, R² 0.59.</p>
+  <h3>How we diagnosed it</h3>
+  <p>If the law holds, log₁₀(η·λ·s₁₀) is constant. So we tabulated that quantity by region instead of trusting one fit:</p>
+  <div class="tw"><table>
+    <tr><th>Region</th><th>Deviation from the median</th><th>Why</th></tr>
+    <tr><td>λ ≤ 2e-4, η 1 to 16</td><td class="num">within ±0.12 dex</td><td>bulk: the law holds</td></tr>
+    <tr><td>λ 4e-4 to 8e-4</td><td class="num">+0.48 dex (~3× slower)</td><td>next to the mode cutoff; the theory predicts critical slowing there</td></tr>
+    <tr><td>η &gt; 16</td><td class="num">+0.20 dex</td><td>next to the instability edge</td></tr>
+    <tr><td>fastest runs</td><td class="num">floor ~700 to 1,000 updates</td><td>can't generalize before fitting the training set</td></tr>
+  </table></div>
+  <p>In the bulk (244 runs): slope <b>0.94</b> at the 10% crossing, <b>1.00</b> at 50%, <b>1.02</b> at 80%, all R² ≈ 0.96.</p>
+  <div class="gotcha"><span class="ui">Be honest about this</span><p>I chose the "bulk" region after seeing the pooled result. Its edges come from the paper itself (its weak-decay fit range and its stability edge), but it is still a post-hoc choice, and the report says so next to both numbers.</p></div>
+  <div class="take"><span class="ui">Takeaway</span><p>Partial data can flatter you. One summary number can hide distinct regimes; break the data down by region before concluding. Report both the pooled and the restricted result.</p></div>
+  <details class="quiz"><summary>Check yourself: why does the 10% crossing give a lower slope (0.94) than the 50% one (1.00)?</summary><div>The 10% crossing sits closer to the fitting stage, which costs a roughly fixed number of steps. That offset flattens the curve. Later thresholds are dominated by the slow clock, so they follow 1/(ηλ) more cleanly.</div></details>
+</article>
+
+<!-- 12 -->
+<article class="lesson" id="seeds" data-title="Seeds and the η–λ asymmetry">
+  <div class="lhead"><span class="lnum">12</span><h2>Seeds, and why η and λ aren't equal partners</h2><span class="ltag">scripts/seed_check.py · results/seeds/</span></div>
+  <p>The paper sweeps one random seed. We took three grokking cells and trained 5 seeds each.</p>
+  <div class="tw"><table>
+    <tr><th>Change</th><th>Predicted speed-up</th><th>Measured (5 seeds)</th></tr>
+    <tr><td>η × 1.69</td><td class="num">1.69×</td><td class="num">1.66× to 1.68×</td></tr>
+    <tr><td>λ × 2.03</td><td class="num">2.03×</td><td class="num">1.42× to 1.53×</td></tr>
+  </table></div>
+  <p>An explanation from the paper's own slow-time definition τ = ηλ(s − s_fit): the fit stage costs about α/η updates no matter what λ is. So s₁₀ ≈ α/η + C/(ηλ). Changing η scales both terms; changing λ scales only the second. Fitted on two cells, this predicted the third cell to within 2.2% for every seed.</p>
+  <div class="gotcha"><span class="ui">What went wrong</span><p>The same offset model fitted across the whole sweep was useless (R² 0.04, with a negative intercept on the half-grid). It works locally, near those cells, not globally. We kept that in the report instead of only showing the local win.</p></div>
+  <div class="take"><span class="ui">Takeaway</span><p>A model that predicts well in one neighborhood can fail across the whole space. Test locally, then globally, and report both.</p></div>
+  <details class="quiz"><summary>Check yourself: what is a "held-out cell prediction" here?</summary><div>We fitted α and C using two cells, then predicted the third cell's crossing before looking at it. Predicting data you didn't fit on is much stronger evidence than fitting all three.</div></details>
+</article>
+
+<!-- 13 -->
+<article class="lesson" id="ntk" data-title="Inside the network: two metric bugs">
+  <div class="lhead"><span class="lnum">13</span><h2>Looking inside the network, and two metric bugs</h2><span class="ltag">src/grok/ntk.py · scripts/ntk_mod97.py · figures/fig2_ntk_fourier.png</span></div>
+  <h3>The closed-form kernel</h3>
+  <p>For our one-hidden-layer net the NTK has an exact formula, tested against autograd:</p>
+  <div class="eq">⟨∇f_c(x), ∇f_d(x′)⟩ = [c = d]·⟨h, h′⟩ + (x·x′)·Σₖ W2[k,c]·W2[k,d]·mₖ·m′ₖ</div>
+  <p>We tracked the "true-label" kernel on mod 97, averaged it by label into a 97 × 97 matrix, and normalized its diagonal to 1, as in Appendix G.1. Modular structure should make that matrix circulant: each entry depends only on (c − c′) mod 97.</p>
+  <div class="gotcha"><span class="ui">Bug 1: the metric said 1.000 at initialization</span><p>"Circulant share" was 1.000 for a random network. A matrix with 1s on the diagonal and a near-constant value elsewhere is trivially circulant, so the metric was measuring the normalization. Fix: score only off-diagonal variation, and add a test that "identity plus a constant" scores 0. Corrected: 0.01 at init, 0.73 by update 6,000.</p></div>
+  <div class="gotcha"><span class="ui">Bug 2: the "task strength" tracked the diagonal</span><p>To get an unnormalized strength (closer to the paper's Λ), I took the largest non-constant eigenvalue of the circulant part. It was 1.01 at init, again the diagonal, which adds the same amount to every frequency. Fix: strongest frequency <i>minus the median frequency</i>, which cancels that constant exactly.</p></div>
+  <p>Corrected result: the k = 1 Fourier mode's strength went 0.016 (update 3,000) → 0.026 (training fully fit, ~7,000) → 0.033 (20,000), then flat. It grew <b>28% after the fit</b> and plateaued, as the theory's stable fixed point predicts. But most of the Fourier <i>shape</i> formed earlier, while training accuracy climbed from 71% to 99.5%. So: partly reproduced.</p>
+  <div class="take"><span class="ui">Takeaway</span><p>Test every metric on a case where the right answer is zero. Both bugs would have been caught in one minute that way.</p></div>
+  <details class="quiz"><summary>Check yourself: why do the eigenvectors of a circulant matrix look like waves?</summary><div>Every circulant matrix is diagonalized by the discrete Fourier transform, so its eigenvectors are sines and cosines over 0..p−1. That's why "Fourier structure" and "circulant" are the same thing here.</div></details>
+</article>
+
+<!-- 14 -->
+<article class="lesson" id="ridge" data-title="Ridge check and a 6 GB surprise">
+  <div class="lhead"><span class="lnum">14</span><h2>The ridge check, a controlled experiment, and a 6 GB surprise</h2><span class="ltag">scripts/ridge_check.py · scripts/ridge_control.py</span></div>
+  <h3>The derivation we tested</h3>
+  <p>At a stationary point of mean((f − y)²) + (λ/2)|θ|², multiply the stationarity condition by J and use Jθ = 2f:</p>
+  <div class="eq">σ* = −c (K + cI)⁻¹ y,  with c = λ·n·p    →    σⱼ / yⱼ = −c / (Λⱼ + c)</div>
+  <h3>The investigation</h3>
+  <ol>
+    <li>Grokking cell after 24,000 updates: 25% relative error, correlation 0.50. Diagnostic: |∇objective| / |∇data| = 0.41, so the net is <i>not</i> at a stationary point.</li>
+    <li>Polishing with L-BFGS: stalled at 0.37. Continuing SGD to 300,000 updates (84 slow-clock units): still 0.45.</li>
+    <li>Is my check wrong? <b>Controlled experiment</b>: same tiny problem, only the activation changed. Smooth x² (3-homogeneous): gradient ratio fell to 1.4e-6 and the formula matched to <b>3.2e-7</b>. ReLU: stuck at 0.30, error 0.12.</li>
+  </ol>
+  <p>Conclusion: the check and the identity are right. ReLU networks under SGD with weight decay don't settle into a smooth stationary point, so for the paper's actual networks the formula is a good approximation (the predicted curve tracks the data across 5 orders of magnitude), not exact.</p>
+  <div class="gotcha"><span class="ui">The 6 GB surprise</span><p>The process died twice with no Python error. <code>dmesg</code> showed the out-of-memory killer at 13 GB. Cause: <code>torch.einsum("uk,vk,kc,kd->ucvd", ...)</code> built a hidden 368 × 368 × 256 × 23 intermediate (~6.4 GB in float64). Rewritten as one matrix product, peak memory fell from 7.4 GB to 2.9 GB, and the autograd test still passed.</p></div>
+<pre>A = (M[:, None, :] * W2.T[None, :, :]).reshape(n * p, -1)
+K = (A @ A.T).view(n, p, n, p)
+K *= (X @ X.T)[:, None, :, None]
+K += (H @ H.T)[:, None, :, None] * torch.eye(p, dtype=X.dtype)[None, :, None, :]</pre>
+  <div class="try"><pre>.venv/bin/python scripts/ridge_control.py square 0.2 200000</pre><button type="button" data-copy>Copy</button></div>
+  <div class="take"><span class="ui">Takeaway</span><p>When a result disagrees with theory, isolate one variable with a control before blaming either the code or the paper. And when a process vanishes silently, check the kernel log for the OOM killer.</p></div>
+  <details class="quiz"><summary>Check yourself: why is the x² network 3-homogeneous, and what changes in the formula?</summary><div>Scaling θ by c scales the hidden activations (W1ᵀx)² by c², then W2 adds one more c: c³. So D = 3 and the constant becomes c = λ·n·p·3/2 instead of λ·n·p.</div></details>
+</article>
+
+<!-- 15 -->
+<article class="lesson" id="ops" data-title="Operations: losing nothing">
+  <div class="lhead"><span class="lnum">15</span><h2>Operations: blocked sites, background jobs, losing nothing</h2><span class="ltag">the unglamorous part</span></div>
+  <ul>
+    <li><b>Blocked hosts.</b> arxiv.org and download.pytorch.org were blocked. Fixes: read the paper through Firecrawl; install PyTorch from PyPI (allowed), which pulled a 5.5 GB CUDA build that still runs fine on CPU.</li>
+    <li><b>Background jobs.</b> Long runs used <code>nohup … &amp;</code> with logs, plus a waiter that notifies when done.</li>
+    <li><b>A waiter that never finished.</b> <code>pgrep -f ridge_check.py</code> matched its own command line, so "wait until it exits" waited forever. Fix: <code>ps -C python</code>, which only lists Python processes.</li>
+    <li><b>A queue that fired early.</b> <code>[ a -nt b ]</code> behaves differently when b doesn't exist yet. Fix: wait on the actual process ID with <code>kill -0 PID</code>.</li>
+    <li><b>Ephemeral machine.</b> The container can be wiped when idle, so we committed often and pushed to GitHub as soon as the repo existed, including partial sweep chunks.</li>
+  </ul>
+  <div class="take"><span class="ui">Takeaway</span><p>Most lost time in real projects is operational. Make waits explicit, write logs, and push results off the machine regularly.</p></div>
+  <details class="quiz"><summary>Check yourself: why does <code>pgrep -f name</code> match itself?</summary><div><code>-f</code> matches against full command lines, and the shell running the loop has "name" in its own command line. So the pattern is always found.</div></details>
+</article>
+
+<!-- 16 -->
+<article class="lesson" id="writeup" data-title="A write-up you can trace">
+  <div class="lhead"><span class="lnum">16</span><h2>Write it up so every number is traceable</h2><span class="ltag">scripts/make_figures.py · make_report.py · make_explainer.py</span></div>
+  <p>No number in the report, explainer or README is typed by hand. The chain is:</p>
+  <div class="eq">results/*.npz, *.json  →  make_figures.py  →  results/metrics.json + figures/*.png  →  make_report.py / make_explainer.py  →  docs/*.html</div>
+  <p>Verdicts use fixed rules ("A within 25% of the paper" = reproduced), and every partial result says why. Rerunning three scripts rebuilds every page from the data, which is how the final sweep updated everything in one step.</p>
+  <div class="gotcha"><span class="ui">Even so, one hand-written number slipped</span><p>The pages said the sweep took "about 4 hours". The log says 355.5 minutes. It was prose I wrote from the estimate, not from the log. Now fixed to "about 6 hours".</p></div>
+  <div class="try"><pre>.venv/bin/python scripts/make_figures.py &amp;&amp; .venv/bin/python scripts/make_report.py &amp;&amp; .venv/bin/python scripts/make_explainer.py</pre><button type="button" data-copy>Copy</button></div>
+  <div class="take"><span class="ui">Takeaway</span><p>Generate numbers into documents from data; never retype them. Anything typed by hand is where errors hide.</p></div>
+  <details class="quiz"><summary>Check yourself: what's in results/metrics.json?</summary><div>Every summary number: phase counts, cutoffs, boundary fit, timing-law slopes (pooled and bulk), NTK trajectory metrics, ridge results. The reports read only from it and from the raw result files.</div></details>
+</article>
+
+<!-- 17 -->
+<article class="lesson" id="talk" data-title="Talk about it, then go further">
+  <div class="lhead"><span class="lnum">17</span><h2>How to talk about it, and what to try next</h2><span class="ltag">interview prep · exercises</span></div>
+  <h3>Your 30-second version</h3>
+  <p>"I independently replicated a September 2026 theory paper on grokking from its appendix, because the code wasn't public. I matched its printed numbers exactly, swept 1,890 networks on CPU, and confirmed the phase map and the 1/λ boundary within 3%. The headline timing law holds away from the phase boundaries but bends near them, and two of the theory's finer claims only partly held. I reported both."</p>
+  <details class="quiz"><summary>"How did you know your code was right without theirs?"</summary><div>Three levels: unit tests for the math the theory uses (homogeneity, Euler identity, closed-form NTK vs autograd), exact matches to numbers printed in the paper, and only then the scientific claims.</div></details>
+  <details class="quiz"><summary>"What's the most interesting thing you found?"</summary><div>Learning rate and weight decay don't act symmetrically: the fitting stage costs ~1/η steps regardless of λ. And the ridge formula is exact for smooth networks but only approximate for ReLU, which I showed with a one-variable control experiment.</div></details>
+  <details class="quiz"><summary>"What went wrong?"</summary><div>Two metrics measured a normalization artifact (caught by testing on a null case), an einsum blew up memory to 13 GB (fixed with a matmul rewrite), and a promising early result (slope 0.96) didn't survive the full dataset.</div></details>
+  <h3>Exercises</h3>
+  <ol>
+    <li>Run the probe with double the weight decay (<code>2.36658e-4</code>). Lesson 12 says the crossing moves earlier by about 1.5×, not 2×. Check it.</li>
+    <li>Add a bias to the first layer and run <code>pytest</code>. Which test fails, and why does that matter for the theory?</li>
+    <li>Change the phase threshold from 0.9 to 0.8 and rebuild the phase map. Which boundaries move?</li>
+    <li>Swap MSE for cross-entropy in <code>train_reference</code> for the grokking cell. The theory no longer applies. Does it still grok?</li>
+    <li>Stretch goal: the paper's Transformer sweep (Appendix G.3), on a coarse 12 × 12 grid.</li>
+  </ol>
+</article>
+
+<footer>Repo: <a href="https://github.com/hariharan-brucewayne220/spectral-grokking-replication">github.com/hariharan-brucewayne220/spectral-grokking-replication</a>. Concepts in depth: <code>docs/teaching_guide.html</code>. Full results: <code>docs/report.html</code>.</footer>
+</main>
+</div>
+
+<script>
+(() => {
+  const lessons = [...document.querySelectorAll("article.lesson")];
+  const KEY = "grok-course-done";
+  let done = new Set();
+  try { done = new Set(JSON.parse(localStorage.getItem(KEY) || "[]")); } catch (e) {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify([...done])); } catch (e) {} };
+  const toc = document.getElementById("toc");
+  const links = {};
+  lessons.forEach((a, i) => {
+    const li = document.createElement("li");
+    const link = document.createElement("a");
+    link.href = `#${a.id}`;
+    link.innerHTML = `<span class="n"><span>${i + 1}</span></span><span>${a.dataset.title}</span>`;
+    li.appendChild(link); toc.appendChild(li); links[a.id] = link;
+    const label = document.createElement("label");
+    label.className = "donebox";
+    label.innerHTML = `<input type="checkbox" id="done-${a.id}"> I've got this lesson`;
+    a.appendChild(label);
+    const box = label.querySelector("input");
+    box.checked = done.has(a.id);
+    box.addEventListener("change", () => { box.checked ? done.add(a.id) : done.delete(a.id); save(); paint(); });
+  });
+  const paint = () => {
+    lessons.forEach((a) => links[a.id].classList.toggle("done", done.has(a.id)));
+    document.getElementById("progTxt").textContent = `${done.size} / ${lessons.length}`;
+    document.getElementById("barFill").style.width = `${(done.size / lessons.length) * 100}%`;
+  };
+  paint();
+  document.querySelectorAll("[data-copy]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const pre = btn.parentElement.querySelector("pre");
+      const ok = () => { btn.textContent = "Copied"; setTimeout(() => (btn.textContent = "Copy"), 1400); };
+      const select = () => { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); btn.textContent = "Selected"; };
+      try { navigator.clipboard.writeText(pre.textContent).then(ok, select); } catch (e) { select(); }
+    });
+  });
+})();
+</script>
